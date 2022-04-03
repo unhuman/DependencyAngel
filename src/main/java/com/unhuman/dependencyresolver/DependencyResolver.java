@@ -7,6 +7,7 @@ import net.sourceforge.argparse4j.inf.Namespace;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,6 +36,8 @@ public class DependencyResolver {
             throw new RuntimeException(String.format("Directory: %s does not contain pom.xml", directory));
         }
 
+        allowProcessing();
+
         executeCommand(directoryFile, MVN_COMMAND, "dependency:tree");
 
         // strip out exclusions from pom.xml
@@ -42,6 +45,29 @@ public class DependencyResolver {
         // aggregate results
         // resolve conflicts
         // update
+    }
+
+    /**
+     * Ensure that we can process this request / warn the user
+     */
+    protected void allowProcessing() {
+        if (!skipPrompts) {
+            while (true) {
+                try {
+                    System.out.print("This is destructive - are you sure you want to continue (y/n)?: ");
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                    String value = reader.readLine().toLowerCase();
+
+                    if (value.matches("y(es)?")) {
+                        break;
+                    }
+
+                    if (value.matches("no?")) {
+                        System.exit(0);
+                    }
+                } catch (IOException e) { }
+            }
+        }
     }
 
     private void executeCommand(File directoryFile, String... commandAndParams) {
