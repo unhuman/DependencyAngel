@@ -1,5 +1,6 @@
 package com.unhuman.dependencyresolver;
 
+import com.unhuman.dependencyresolver.pom.PomManipulator;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
@@ -37,6 +38,16 @@ public class DependencyResolver {
         }
 
         allowProcessing();
+
+        // Open the pom file and remove any exclusions and forced transitive dependencies
+        try {
+            PomManipulator pomManipulator = new PomManipulator((pomFilePath));
+            pomManipulator.stripExclusions();
+            pomManipulator.stripForcedTransitiveDependencies();
+            pomManipulator.saveFile();
+        } catch (Exception e) {
+            throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
+        }
 
         executeCommand(directoryFile, MVN_COMMAND, "dependency:tree");
 
