@@ -21,11 +21,15 @@ import java.util.regex.Pattern;
 
 public class PomManipulator {
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\r?\\n\\s+");
+    private static final String DEPENDENCIES_TAG = "dependencies";
+    private static final String EXCLUSIONS_TAG = "exclusions";
+
     private static final String COMMENT_ADD_DEPENDENCY_START = "Forced Transitive Dependency Start";
     private static final String COMMENT_ADD_DEPENDENCY_END = "Forced Transitive Dependency End";
     private String filename;
     private Document document;
     private boolean changed;
+
     public PomManipulator(String filename) throws ParserConfigurationException, IOException, SAXException {
         this.filename = filename;
         changed = false;
@@ -37,11 +41,11 @@ public class PomManipulator {
     }
 
     public void stripExclusions() {
-        stripNodes("exclusions");
+        stripNodes(EXCLUSIONS_TAG);
     }
 
     public void stripForcedTransitiveDependencies() {
-        NodeList dependenciesNodes = document.getElementsByTagName("dependencies");
+        NodeList dependenciesNodes = document.getElementsByTagName(DEPENDENCIES_TAG);
 
         for (int i = 0; i < dependenciesNodes.getLength(); i++ ) {
             NodeList dependencies = dependenciesNodes.item(i).getChildNodes();
@@ -68,8 +72,8 @@ public class PomManipulator {
                         }
                     }
 
+                    // Track where we are and delete if necessary
                     Node nextNode = node.getNextSibling();
-                    // Delete anything left over, otherwise we're done
                     if (deleting) {
                         deleteNode(node, true);
                     }
@@ -104,10 +108,6 @@ public class PomManipulator {
         deleteNode.getParentNode().removeChild(deleteNode);
 
         changed = true;
-    }
-
-    public boolean isChanged() {
-        return changed;
     }
 
     public void saveFile() throws TransformerException, FileNotFoundException {

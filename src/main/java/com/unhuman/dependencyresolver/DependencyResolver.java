@@ -1,6 +1,7 @@
 package com.unhuman.dependencyresolver;
 
 import com.unhuman.dependencyresolver.pom.PomManipulator;
+import com.unhuman.dependencyresolver.tgf.TgfData;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
@@ -13,6 +14,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 public class DependencyResolver {
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
@@ -49,13 +51,41 @@ public class DependencyResolver {
             throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
         }
 
-        executeCommand(directoryFile, MVN_COMMAND, "dependency:tree");
+        // Run maven build - see if there are any dependency conflicts
+        // TODO: This may be possible programmatically from just the dependency:tree
 
-        // strip out exclusions from pom.xml
         // run maven dependency:tree
-        // aggregate results
-        // resolve conflicts
-        // update
+        Path tempFilePath = null;
+        TgfData tgfData = null;
+        try {
+            tempFilePath = Files.createTempFile("dependency-resolver-", ".tgf.tmp");
+            executeCommand(directoryFile, MVN_COMMAND, "dependency:tree",
+                    "-DoutputType=tgf", "-DoutputFile=" + tempFilePath.toString());
+            tgfData = new TgfData(tempFilePath.toString());
+        } catch (Exception e) {
+            throw new RuntimeException("Problem with dependency resolution", e);
+        } finally {
+            if (tempFilePath != null) {
+                new File(tempFilePath.toString()).delete();
+            }
+        }
+
+        // parse out TGF Data
+
+        // Aggregate results / figure out what to do
+
+        // Update pom.xml
+        try {
+            PomManipulator pomManipulator = new PomManipulator((pomFilePath));
+
+            // Update dependencies
+
+            pomManipulator.saveFile();
+        } catch (Exception e) {
+            throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
+        }
+
+        // Happiness
     }
 
     /**
