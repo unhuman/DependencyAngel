@@ -14,16 +14,20 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class DependencyResolver {
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
     private static final String MVN_COMMAND = (IS_WINDOWS) ? "mvn.cmd" : "mvn";
     private String directory;
+    private Map<String, String> environmentVars;
     private boolean skipPrompts;
 
-    protected DependencyResolver(String directory, boolean skipPrompts) {
+    protected DependencyResolver(String directory, Map<String, String> environmentVars, boolean skipPrompts) {
         this.directory = directory;
+        this.environmentVars = environmentVars;
         this.skipPrompts = skipPrompts;
     }
 
@@ -115,23 +119,29 @@ public class DependencyResolver {
         try {
             ProcessBuilder builder = new ProcessBuilder(commandAndParams);
             //builder.inheritIO(); // TODO: Learn what this does - weird things with consuming output
+            builder.environment().putAll(environmentVars);
             builder.directory(directoryFile);
             Process process = builder.start();
 
             int exitValue = process.waitFor();
-            if (exitValue != 0) {
-                throw new RuntimeException(String.format("Process: %s failed with status code %d",
-                        commandAndParams, exitValue));
-            }
+            BufferedReader reader = (exitValue == 0)
+                    ? new BufferedReader(new InputStreamReader(process.getInputStream()))
+                    : new BufferedReader(new InputStreamReader(process.getErrorStream()));
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line = "";
             while ((line = reader.readLine()) != null) {
                 System.out.println(line);
             }
 
+            if (exitValue != 0) {
+                throw new RuntimeException(String.format("Process: %s failed with status code %d",
+                        Arrays.stream(commandAndParams).toArray().toString(), exitValue));
+            }
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            if (e instanceof RuntimeException) {
+                throw (RuntimeException) e;
+            }
+            throw new RuntimeException(e);
         }
     }
 
@@ -139,6 +149,10 @@ public class DependencyResolver {
         ArgumentParser parser = ArgumentParsers.newFor("Checksum").build()
                 .defaultHelp(true)
                 .description("Resolve conflicting dependencies (exclusions).");
+        parser.addArgument("-e", "--env")
+                .type(String.class)
+                .required(false)
+                .help("Specify environment variables (comma separated, k=v pairs");
         parser.addArgument("-s", "--skipPrompts")
                 .type(Boolean.class)
                 .setDefault(false)
@@ -155,10 +169,22 @@ public class DependencyResolver {
             System.exit(1);
         }
 
+        String env = ns.getString("env");
+        Map<String, String> environmentVars = new HashMap<>();
+        if (env != null) {
+            for (String envItem: env.split(",")) {
+                String[] kv = envItem.split("=");
+                if (kv.length != 2) {
+                    throw new RuntimeException("Invalid environment (comma separated = split pairs): " + env);
+                }
+                environmentVars.put(kv[0], kv[1]);
+            }
+        }
+
         boolean skipPrompts = ns.getBoolean("skipPrompts");
         String directory = ns.getString("directory");
 
-        DependencyResolver resolver = new DependencyResolver(directory, skipPrompts);
+        DependencyResolver resolver = new DependencyResolver(directory, environmentVars, skipPrompts);
         resolver.process();
     }
 }
