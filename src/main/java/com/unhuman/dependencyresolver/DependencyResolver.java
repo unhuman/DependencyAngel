@@ -17,10 +17,17 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class DependencyResolver {
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
     private static final String MVN_COMMAND = (IS_WINDOWS) ? "mvn.cmd" : "mvn";
+    private static final String TEMP_TGF_FILE_PREFIX = "dependency-resolver-";
+    private static final String TEMP_TGF_FILE_SUFFIX = ".tgf.tmp";
+    private static final Pattern GENERATED_EXPECTED_FILE_LINE =
+            Pattern.compile(String.format("Wrote dependency tree to:.*%s.*%s",
+                    TEMP_TGF_FILE_PREFIX, TEMP_TGF_FILE_SUFFIX));
+
     private String directory;
     private Map<String, String> environmentVars;
     private boolean skipPrompts;
@@ -62,10 +69,13 @@ public class DependencyResolver {
         Path tempFilePath = null;
         TgfData tgfData = null;
         try {
-            tempFilePath = Files.createTempFile("dependency-resolver-", ".tgf.tmp");
-            executeCommand(directoryFile, MVN_COMMAND, "dependency:tree",
+            tempFilePath = Files.createTempFile(TEMP_TGF_FILE_PREFIX, TEMP_TGF_FILE_SUFFIX);
+
+            executeCommand(directoryFile, GENERATED_EXPECTED_FILE_LINE, MVN_COMMAND, "dependency:tree",
                     "-DoutputType=tgf", "-DoutputFile=" + tempFilePath.toString());
             tgfData = new TgfData(tempFilePath.toString());
+        } catch (RuntimeException re) {
+            throw re;
         } catch (Exception e) {
             throw new RuntimeException("Problem with dependency resolution", e);
         } finally {
@@ -115,7 +125,13 @@ public class DependencyResolver {
         }
     }
 
-    private void executeCommand(File directoryFile, String... commandAndParams) {
+    /**
+     *
+     * @param directoryFile
+     * @param errorMatchForSuccess - search output for a pattern under error conditions - if found, treat as success
+     * @param commandAndParams
+     */
+    protected void executeCommand(File directoryFile, Pattern errorMatchForSuccess, String... commandAndParams) {
         try {
             ProcessBuilder builder = new ProcessBuilder(commandAndParams);
             //builder.inheritIO(); // TODO: Learn what this does - weird things with consuming output
@@ -124,16 +140,35 @@ public class DependencyResolver {
             Process process = builder.start();
 
             int exitValue = process.waitFor();
-            BufferedReader reader = (exitValue == 0)
-                    ? new BufferedReader(new InputStreamReader(process.getInputStream()))
-                    : new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            BufferedReader outputReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 
             String line = "";
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
+
+            // If there was an error exit value, search to see if we should treat it as success
+            if (errorMatchForSuccess != null) {
+                // Assume we aren't going to find what we're looking for
+                boolean foundDesiredValue = false;
+                while ((line = outputReader.readLine()) != null) {
+                    if (errorMatchForSuccess.matcher(line).find()) {
+                        System.out.println("Found desired output: " + errorMatchForSuccess);
+                        foundDesiredValue = true;
+                        exitValue = 0;
+                        break;
+                    }
+                }
+                if (!foundDesiredValue) {
+                    throw new RuntimeException(String.format("Could not find desired value in output: %s",
+                            errorMatchForSuccess));
+                }
             }
 
             if (exitValue != 0) {
+                // output any errors we got
+                while ((line = errorReader.readLine()) != null) {
+                    System.err.println(line);
+                }
+
                 throw new RuntimeException(String.format("Process: %s failed with status code %d",
                         Arrays.stream(commandAndParams).toArray().toString(), exitValue));
             }
