@@ -2,6 +2,8 @@ package com.unhuman.dependencyresolver;
 
 import com.unhuman.dependencyresolver.pom.PomManipulator;
 import com.unhuman.dependencyresolver.tgf.TgfProcessor;
+import com.unhuman.dependencyresolver.tree.DependencyNode;
+import com.unhuman.dependencyresolver.utility.DependencyHelper;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
@@ -85,6 +87,7 @@ public class DependencyResolver {
         }
 
         // parse out TGF Data
+        DependencyNode root = DependencyHelper.convertTgfData(tgfProcessor.getTgfData());
 
         // Aggregate results / figure out what to do
 
