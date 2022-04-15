@@ -9,15 +9,24 @@ import java.util.*;
 public class TgfProcessor {
     private enum Mode { DATA, RELATIONSHIPS }
     private Mode mode;
-    TgfData tgfData;
+    private TgfData tgfData;
 
-    public TgfProcessor(String filename) throws FileNotFoundException {
-        this(new Scanner(new File(filename)));
+    protected TgfProcessor() {
+        tgfData = new TgfData();
     }
 
-    protected TgfProcessor(Scanner scanner) {
-        tgfData = new TgfData();
+    public static TgfData process(String filename) throws FileNotFoundException {
+        return process(new Scanner(new File(filename)));
+    }
 
+    public static TgfData process(Scanner scanner) {
+        TgfProcessor processor = new TgfProcessor();
+        processor.readFile(scanner);
+        return processor.tgfData;
+    }
+
+
+    protected void readFile(Scanner scanner) {
         int lineNum = 0;
         try {
             mode = Mode.DATA;
@@ -29,10 +38,11 @@ public class TgfProcessor {
         } catch (Exception e) {
             throw new RuntimeException("Error Line: " + lineNum + ": " + e.getMessage(), e);
         }
-    }
 
-    public TgfData getTgfData() {
-        return tgfData;
+        if (!Mode.RELATIONSHIPS.equals(mode)) {
+            throw new RuntimeException("Did not find relationships in dependency data.");
+        }
+
     }
 
     protected void processLine(String line) {

@@ -13,6 +13,6 @@ public class TgfProcessorTest {
     public void testTgfData() {
         String data = DEPENDENCY_1 + '\n' + SEPARATOR + '\n' + MAP_1;
         Scanner scanner = new Scanner(data);
-        TgfProcessor tgfProcessor = new TgfProcessor(scanner);
+        TgfData tgfData = TgfProcessor.process(scanner);
     }
 }

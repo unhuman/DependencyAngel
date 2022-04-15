@@ -1,6 +1,7 @@
 package com.unhuman.dependencyresolver;
 
 import com.unhuman.dependencyresolver.pom.PomManipulator;
+import com.unhuman.dependencyresolver.tgf.TgfData;
 import com.unhuman.dependencyresolver.tgf.TgfProcessor;
 import com.unhuman.dependencyresolver.tree.DependencyNode;
 import com.unhuman.dependencyresolver.utility.DependencyHelper;
@@ -69,13 +70,13 @@ public class DependencyResolver {
 
         // run maven dependency:tree
         Path tempFilePath = null;
-        TgfProcessor tgfProcessor = null;
+        TgfData tgfData;
         try {
             tempFilePath = Files.createTempFile(TEMP_TGF_FILE_PREFIX, TEMP_TGF_FILE_SUFFIX);
 
             executeCommand(directoryFile, GENERATED_EXPECTED_FILE_LINE, MVN_COMMAND, "dependency:tree",
                     "-DoutputType=tgf", "-DoutputFile=" + tempFilePath.toString());
-            tgfProcessor = new TgfProcessor(tempFilePath.toString());
+            tgfData = TgfProcessor.process(tempFilePath.toString());
         } catch (RuntimeException re) {
             throw re;
         } catch (Exception e) {
@@ -87,7 +88,7 @@ public class DependencyResolver {
         }
 
         // parse out TGF Data
-        DependencyNode root = DependencyHelper.convertTgfData(tgfProcessor.getTgfData());
+        DependencyNode root = DependencyHelper.convertTgfData(tgfData);
 
         // Aggregate results / figure out what to do
 
