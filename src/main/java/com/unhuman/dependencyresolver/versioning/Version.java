@@ -1,4 +1,4 @@
-package com.unhuman.dependencyresolver.tgf;
+package com.unhuman.dependencyresolver.versioning;
 
 public class Version implements Comparable {
     private static final int LEFT_GREATER = 1;

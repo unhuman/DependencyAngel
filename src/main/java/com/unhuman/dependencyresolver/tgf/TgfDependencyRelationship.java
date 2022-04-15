@@ -1,11 +1,11 @@
 package com.unhuman.dependencyresolver.tgf;
 
-public class DependencyRelationship {
+public class TgfDependencyRelationship {
     private String parent;
     private String child;
     private String scope;
 
-    public DependencyRelationship(String data) {
+    public TgfDependencyRelationship(String data) {
         String[] details = data.split("\\s+");
         if (details.length != 3) {
             throw new RuntimeException("Invalid Dependency Data: " + String.join(" ", data));

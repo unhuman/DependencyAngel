@@ -1,5 +1,6 @@
-package com.unhuman.dependencyresolver.tgf;
+package com.unhuman.dependencyresolver.versioning;
 
+import com.unhuman.dependencyresolver.versioning.Version;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

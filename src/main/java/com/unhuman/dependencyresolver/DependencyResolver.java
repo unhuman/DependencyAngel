@@ -1,7 +1,7 @@
 package com.unhuman.dependencyresolver;
 
 import com.unhuman.dependencyresolver.pom.PomManipulator;
-import com.unhuman.dependencyresolver.tgf.TgfData;
+import com.unhuman.dependencyresolver.tgf.TgfProcessor;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
@@ -67,13 +67,13 @@ public class DependencyResolver {
 
         // run maven dependency:tree
         Path tempFilePath = null;
-        TgfData tgfData = null;
+        TgfProcessor tgfProcessor = null;
         try {
             tempFilePath = Files.createTempFile(TEMP_TGF_FILE_PREFIX, TEMP_TGF_FILE_SUFFIX);
 
             executeCommand(directoryFile, GENERATED_EXPECTED_FILE_LINE, MVN_COMMAND, "dependency:tree",
                     "-DoutputType=tgf", "-DoutputFile=" + tempFilePath.toString());
-            tgfData = new TgfData(tempFilePath.toString());
+            tgfProcessor = new TgfProcessor(tempFilePath.toString());
         } catch (RuntimeException re) {
             throw re;
         } catch (Exception e) {
