@@ -8,7 +8,7 @@ import java.util.List;
 
 public class DependencyNode extends Dependency {
     DependencyNode parent; // TODO: Do we need this?
-    List<Dependency> children;
+    List<DependencyNode> children;
     public DependencyNode(DependencyNode parent, Dependency dependency) {
         super(dependency);
         this.parent = parent;
@@ -23,11 +23,11 @@ public class DependencyNode extends Dependency {
         return parent;
     }
 
-    public void addChild(Dependency dependency) {
+    public void addChild(DependencyNode dependency) {
         children.add(dependency);
     }
 
-    public List<Dependency> getChildren() {
+    public List<DependencyNode> getChildren() {
         return Collections.unmodifiableList(children);
     }
 }
