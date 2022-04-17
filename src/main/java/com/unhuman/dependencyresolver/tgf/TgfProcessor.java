@@ -22,6 +22,7 @@ public class TgfProcessor {
     public static TgfData process(Scanner scanner) {
         TgfProcessor processor = new TgfProcessor();
         processor.readFile(scanner);
+        scanner.close();
         return processor.tgfData;
     }
 

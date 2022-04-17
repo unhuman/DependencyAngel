@@ -25,11 +25,13 @@ import java.util.regex.Pattern;
 public class DependencyResolver {
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
     private static final String MVN_COMMAND = (IS_WINDOWS) ? "mvn.cmd" : "mvn";
-    private static final String TEMP_TGF_FILE_PREFIX = "dependency-resolver-";
-    private static final String TEMP_TGF_FILE_SUFFIX = ".tgf.tmp";
+    private static final String TEMP_FILE_PREFIX = "dependency-resolver-";
+    private static final String TEMP_FILE_SUFFIX = ".tmp";
     private static final Pattern GENERATED_EXPECTED_FILE_LINE =
             Pattern.compile(String.format("Wrote dependency tree to:.*%s.*%s",
-                    TEMP_TGF_FILE_PREFIX, TEMP_TGF_FILE_SUFFIX));
+                    TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX));
+    private static final Pattern CONVERGENCE_EXPECTED_FILE_LINE =
+            Pattern.compile("DependencyConvergence failed with message");
 
     private String directory;
     private Map<String, String> environmentVars;
@@ -69,26 +71,45 @@ public class DependencyResolver {
         // TODO: This may be possible programmatically from just the dependency:tree
 
         // run maven dependency:tree
-        Path tempFilePath = null;
+        Path tempTgfFilePath = null;
         TgfData tgfData;
         try {
-            tempFilePath = Files.createTempFile(TEMP_TGF_FILE_PREFIX, TEMP_TGF_FILE_SUFFIX);
+            tempTgfFilePath = Files.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
 
             executeCommand(directoryFile, GENERATED_EXPECTED_FILE_LINE, MVN_COMMAND, "dependency:tree",
-                    "-DoutputType=tgf", "-DoutputFile=" + tempFilePath.toString());
-            tgfData = TgfProcessor.process(tempFilePath.toString());
+                    "-DoutputType=tgf", "-DoutputFile=" + tempTgfFilePath.toString());
+            tgfData = TgfProcessor.process(tempTgfFilePath.toString());
         } catch (RuntimeException re) {
             throw re;
         } catch (Exception e) {
             throw new RuntimeException("Problem with dependency resolution", e);
         } finally {
-            if (tempFilePath != null) {
-                new File(tempFilePath.toString()).delete();
+            if (tempTgfFilePath != null) {
+                new File(tempTgfFilePath.toString()).delete();
             }
         }
 
         // parse out TGF Data
         DependencyNode root = DependencyHelper.convertTgfData(tgfData);
+
+        // run maven dependency:analyze
+        Path tempAnalyzeFilePath = null;
+        try {
+            tempAnalyzeFilePath = Files.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
+
+            executeCommand(directoryFile, CONVERGENCE_EXPECTED_FILE_LINE, MVN_COMMAND,
+                    "dependency:analyze",
+                    ">" + tempAnalyzeFilePath.toString());
+        } catch (RuntimeException re) {
+            throw re;
+        } catch (Exception e) {
+            throw new RuntimeException("Problem with analyze", e);
+        } finally {
+            if (tempAnalyzeFilePath != null) {
+                new File(tempAnalyzeFilePath.toString()).delete();
+            }
+        }
+
 
         // Aggregate results / figure out what to do
 
