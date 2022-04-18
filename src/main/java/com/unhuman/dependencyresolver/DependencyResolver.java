@@ -1,5 +1,6 @@
 package com.unhuman.dependencyresolver;
 
+import com.unhuman.dependencyresolver.convergence.ConvergenceParser;
 import com.unhuman.dependencyresolver.pom.PomManipulator;
 import com.unhuman.dependencyresolver.tgf.TgfData;
 import com.unhuman.dependencyresolver.tgf.TgfProcessor;
@@ -17,10 +18,10 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
+
+import static com.unhuman.dependencyresolver.convergence.ConvergenceParser.CONVERGE_ERROR;
 
 public class DependencyResolver {
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
@@ -92,24 +93,16 @@ public class DependencyResolver {
         // parse out TGF Data
         DependencyNode root = DependencyHelper.convertTgfData(tgfData);
 
-        // run maven dependency:analyze
-        Path tempAnalyzeFilePath = null;
         try {
-            tempAnalyzeFilePath = Files.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
+            List<String> analyzeResults = executeCommand(directoryFile, CONVERGE_ERROR, MVN_COMMAND,
+                    "dependency:analyze");
 
-            executeCommand(directoryFile, CONVERGENCE_EXPECTED_FILE_LINE, MVN_COMMAND,
-                    "dependency:analyze",
-                    ">" + tempAnalyzeFilePath.toString());
+            ConvergenceParser convergenceParser = ConvergenceParser.parse(analyzeResults);
         } catch (RuntimeException re) {
             throw re;
         } catch (Exception e) {
             throw new RuntimeException("Problem with analyze", e);
-        } finally {
-            if (tempAnalyzeFilePath != null) {
-                new File(tempAnalyzeFilePath.toString()).delete();
-            }
         }
-
 
         // Aggregate results / figure out what to do
 
@@ -155,8 +148,10 @@ public class DependencyResolver {
      * @param directoryFile
      * @param errorMatchForSuccess - search output for a pattern under error conditions - if found, treat as success
      * @param commandAndParams
+     * @return list of data in the input
      */
-    protected void executeCommand(File directoryFile, Pattern errorMatchForSuccess, String... commandAndParams) {
+    protected List<String> executeCommand(File directoryFile, Pattern errorMatchForSuccess, String... commandAndParams) {
+        List<String> output = new ArrayList<>(100);
         try {
             ProcessBuilder builder = new ProcessBuilder(commandAndParams);
             //builder.inheritIO(); // TODO: Learn what this does - weird things with consuming output
@@ -164,7 +159,7 @@ public class DependencyResolver {
             builder.directory(directoryFile);
             Process process = builder.start();
 
-            int exitValue = process.waitFor();
+            int exitValue = -1;
             BufferedReader outputReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 
@@ -179,8 +174,8 @@ public class DependencyResolver {
                         System.out.println("Found desired output: " + errorMatchForSuccess);
                         foundDesiredValue = true;
                         exitValue = 0;
-                        break;
                     }
+                    output.add(line);
                 }
                 if (!foundDesiredValue) {
                     throw new RuntimeException(String.format("Could not find desired value in output: %s",
@@ -188,21 +183,25 @@ public class DependencyResolver {
                 }
             }
 
-            if (exitValue != 0) {
-                // output any errors we got
-                while ((line = errorReader.readLine()) != null) {
-                    System.err.println(line);
-                }
-
-                throw new RuntimeException(String.format("Process: %s failed with status code %d",
-                        Arrays.stream(commandAndParams).toArray().toString(), exitValue));
+            // output any errors we got
+            while ((line = errorReader.readLine()) != null) {
+                System.err.println(line);
             }
+
+            int processResult =  process.waitFor();
+
+            if (processResult !=0 && exitValue != 0) {
+                throw new RuntimeException(String.format("Process: %s failed with status code %d",
+                        Arrays.stream(commandAndParams).toArray().toString(), processResult));
+            }
+
         } catch (Exception e) {
             if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;
             }
             throw new RuntimeException(e);
         }
+        return output;
     }
 
     public static void main(String[] args) {

@@ -15,7 +15,6 @@ public class Dependency {
             throw new RuntimeException("Invalid Dependency Data: " + String.join(":", data));
         }
 
-
         int i = 0;
         group = details[i++];
         artifact = details[i++];
