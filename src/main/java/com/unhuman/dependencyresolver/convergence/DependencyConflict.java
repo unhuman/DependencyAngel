@@ -40,4 +40,12 @@ public class DependencyConflict extends Dependency {
         }
     }
 
+    public boolean containsDependency(Dependency dependency) {
+        for (DependencyConflictData conflictData: conflictHierarchy) {
+            if (conflictData.containsDependency(dependency)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

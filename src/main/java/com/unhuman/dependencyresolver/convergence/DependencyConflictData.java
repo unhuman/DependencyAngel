@@ -5,14 +5,13 @@ import com.unhuman.dependencyresolver.dependency.Dependency;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DependencyConflictData {
-    private Dependency dependency;
+public class DependencyConflictData extends Dependency {
     private DependencyConflictData parent;
     private List<DependencyConflictData> children;
 
     public DependencyConflictData(DependencyConflictData parent, Dependency dependency) {
+        super(dependency);
         this.parent = null;
-        this.dependency = dependency;
         this.children = new ArrayList<>();
     }
 
@@ -28,7 +27,17 @@ public class DependencyConflictData {
         return this;
     }
 
-    public Dependency getDependency() {
-        return dependency;
+    public boolean containsDependency(Dependency dependency) {
+        if (getGroup().equals(dependency.getGroup()) && getArtifact().equals(dependency.getArtifact())) {
+            return true;
+        }
+
+        for (DependencyConflictData child : children) {
+            if (child.containsDependency(dependency)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -106,14 +106,34 @@ public class DependencyResolver {
             }
 
             conflicts = new ArrayList<>(conflicts);
-            Iterator<DependencyConflict> conflictIterator = conflicts.iterator();
-            while(conflictIterator.hasNext()) {
-                DependencyConflict currentConflict = conflictIterator.next();
+            List<DependencyConflict> handledDependencies = new ArrayList<>();
+            while (conflicts.size() > 0) {
+                DependencyConflict currentConflict = conflicts.remove(0);
+                handledDependencies.add(currentConflict);
+
                 System.out.println("Processing conflict: " + currentConflict.getDisplayName()
                         + " to version: " + currentConflict.getVersion()
                         + " with scope: " + currentConflict.getScope());
 
-                conflictIterator.remove();
+                // TODO: Figure out what needs to be done
+
+                // don't process further if the next dependency includes anything changed by this one
+                // that'd be handled in the next iteration
+                if (conflicts.size() > 0) {
+                    DependencyConflict nextConflict = conflicts.get(0);
+                    for (DependencyConflict handledDependency: handledDependencies) {
+                        if (nextConflict.containsDependency(handledDependency)) {
+                            // clear the handled dependencies for the next iteration
+                            handledDependencies.clear();
+                            break;
+                        }
+                    }
+                }
+
+                // nothing handled indicates we need another cycle
+                if (handledDependencies.size() == 0) {
+                    break;
+                }
             }
 
             // Update pom.xml
