@@ -91,6 +91,7 @@ public class DependencyResolver {
 //        DependencyNode root = DependencyHelper.convertTgfData(tgfData);
 
         // this processing may take multiple iterations if there are nested dependencies
+        int itemsToProcess = -1;
         List<DependencyConflict> conflicts;
         do {
             try {
@@ -99,6 +100,12 @@ public class DependencyResolver {
 
                 ConvergenceParser convergenceParser = ConvergenceParser.from(analyzeResults);
                 conflicts = convergenceParser.getDependencyConflicts();
+
+                // Track if we are stuck - shouldn't happen, but let's be safe
+                if (conflicts.size() > 0 && itemsToProcess == conflicts.size()) {
+                    throw new RuntimeException("Problems determining changes - stuck in loop");
+                }
+                itemsToProcess = conflicts.size();
             } catch (RuntimeException re) {
                 throw re;
             } catch (Exception e) {
