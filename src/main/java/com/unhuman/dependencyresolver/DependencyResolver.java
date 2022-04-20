@@ -1,11 +1,9 @@
 package com.unhuman.dependencyresolver;
 
 import com.unhuman.dependencyresolver.convergence.ConvergenceParser;
+import com.unhuman.dependencyresolver.convergence.DependencyConflict;
+import com.unhuman.dependencyresolver.convergence.DependencyConflictData;
 import com.unhuman.dependencyresolver.pom.PomManipulator;
-import com.unhuman.dependencyresolver.tgf.TgfData;
-import com.unhuman.dependencyresolver.tgf.TgfProcessor;
-import com.unhuman.dependencyresolver.tree.DependencyNode;
-import com.unhuman.dependencyresolver.utility.DependencyHelper;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
@@ -69,52 +67,65 @@ public class DependencyResolver {
         }
 
         // Run maven build - see if there are any dependency conflicts
-        // TODO: This may be possible programmatically from just the dependency:tree
 
-        // run maven dependency:tree
-        Path tempTgfFilePath = null;
-        TgfData tgfData;
-        try {
-            tempTgfFilePath = Files.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
+//        // run maven dependency:tree
+//        Path tempTgfFilePath = null;
+//        TgfData tgfData;
+//        try {
+//            tempTgfFilePath = Files.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
+//
+//            executeCommand(directoryFile, GENERATED_EXPECTED_FILE_LINE, MVN_COMMAND, "dependency:tree",
+//                    "-DoutputType=tgf", "-DoutputFile=" + tempTgfFilePath.toString());
+//            tgfData = TgfProcessor.process(tempTgfFilePath.toString());
+//        } catch (RuntimeException re) {
+//            throw re;
+//        } catch (Exception e) {
+//            throw new RuntimeException("Problem with dependency resolution", e);
+//        } finally {
+//            if (tempTgfFilePath != null) {
+//                new File(tempTgfFilePath.toString()).delete();
+//            }
+//        }
+//
+//        // parse out TGF Data
+//        DependencyNode root = DependencyHelper.convertTgfData(tgfData);
 
-            executeCommand(directoryFile, GENERATED_EXPECTED_FILE_LINE, MVN_COMMAND, "dependency:tree",
-                    "-DoutputType=tgf", "-DoutputFile=" + tempTgfFilePath.toString());
-            tgfData = TgfProcessor.process(tempTgfFilePath.toString());
-        } catch (RuntimeException re) {
-            throw re;
-        } catch (Exception e) {
-            throw new RuntimeException("Problem with dependency resolution", e);
-        } finally {
-            if (tempTgfFilePath != null) {
-                new File(tempTgfFilePath.toString()).delete();
-            }
-        }
-
-        // parse out TGF Data
-        DependencyNode root = DependencyHelper.convertTgfData(tgfData);
-
+        List<DependencyConflict> conflicts;
         try {
             List<String> analyzeResults = executeCommand(directoryFile, CONVERGE_ERROR, MVN_COMMAND,
                     "dependency:analyze");
 
-            ConvergenceParser convergenceParser = ConvergenceParser.parse(analyzeResults);
+            ConvergenceParser convergenceParser = ConvergenceParser.from(analyzeResults);
+            conflicts = convergenceParser.getDependencyConflicts();
         } catch (RuntimeException re) {
             throw re;
         } catch (Exception e) {
             throw new RuntimeException("Problem with analyze", e);
         }
 
-        // Aggregate results / figure out what to do
+        conflicts = new ArrayList<>(conflicts);
+        // this processing may take multiple tries
+        while (conflicts.size() > 0) {
+            Iterator<DependencyConflict> conflictIterator = conflicts.iterator();
+            while(conflictIterator.hasNext()) {
+                DependencyConflict currentConflict = conflictIterator.next();
+                System.out.println("Processing conflict: " + currentConflict.getDependency().getDisplayName());
 
-        // Update pom.xml
-        try {
-            PomManipulator pomManipulator = new PomManipulator((pomFilePath));
+                // now figure out the data in the conflict
 
-            // Update dependencies
+                conflictIterator.remove();
+            }
 
-            pomManipulator.saveFile();
-        } catch (Exception e) {
-            throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
+            // Update pom.xml
+            try {
+                PomManipulator pomManipulator = new PomManipulator((pomFilePath));
+
+                // Update dependencies
+
+                pomManipulator.saveFile();
+            } catch (Exception e) {
+                throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
+            }
         }
 
         // Happiness
@@ -159,21 +170,18 @@ public class DependencyResolver {
             builder.directory(directoryFile);
             Process process = builder.start();
 
-            int exitValue = -1;
             BufferedReader outputReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 
             String line = "";
+            boolean foundDesiredValue = false;
 
             // If there was an error exit value, search to see if we should treat it as success
             if (errorMatchForSuccess != null) {
-                // Assume we aren't going to find what we're looking for
-                boolean foundDesiredValue = false;
                 while ((line = outputReader.readLine()) != null) {
-                    if (errorMatchForSuccess.matcher(line).find()) {
-                        System.out.println("Found desired output: " + errorMatchForSuccess);
+                    if (!foundDesiredValue && errorMatchForSuccess.matcher(line).find()) {
+                        System.out.println("Found desired line: " + errorMatchForSuccess);
                         foundDesiredValue = true;
-                        exitValue = 0;
                     }
                     output.add(line);
                 }
@@ -190,7 +198,7 @@ public class DependencyResolver {
 
             int processResult =  process.waitFor();
 
-            if (processResult !=0 && exitValue != 0) {
+            if (processResult !=0 && !foundDesiredValue) {
                 throw new RuntimeException(String.format("Process: %s failed with status code %d",
                         Arrays.stream(commandAndParams).toArray().toString(), processResult));
             }

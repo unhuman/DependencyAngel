@@ -3,6 +3,7 @@ package com.unhuman.dependencyresolver.convergence;
 import com.unhuman.dependencyresolver.dependency.Dependency;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,9 +16,12 @@ public class ConvergenceParser {
     }
     public static final Pattern CONVERGE_ERROR = Pattern.compile(
             "Dependency convergence error for (.*?) paths to dependency are:");
+    public static final Pattern CONVERGE_LINE = Pattern.compile(
+            "(\\s*)(?:[^\\sa-z]*)(.*)", Pattern.CASE_INSENSITIVE);
     protected static final String AND_LINE = "and";
 
     private Mode mode;
+    private String indentStep = null;
     private List<DependencyConflict> dependencyConflicts;
 
     private ConvergenceParser() {
@@ -25,7 +29,7 @@ public class ConvergenceParser {
         dependencyConflicts = new ArrayList<>();
     }
 
-    public static ConvergenceParser parse(List<String> data) {
+    public static ConvergenceParser from(List<String> data) {
         ConvergenceParser parser = new ConvergenceParser();
         parser.process(data);
         return parser;
@@ -47,19 +51,29 @@ public class ConvergenceParser {
         }
     }
 
+    public List<DependencyConflict> getDependencyConflicts() {
+        return Collections.unmodifiableList(dependencyConflicts);
+    }
+
     protected void processLine(String line) {
+        Matcher matcher;
+        DependencyConflictData conflict;
         switch (mode) {
             case LOOKING:
-                Matcher matcher = CONVERGE_ERROR.matcher(line);
+                matcher = CONVERGE_ERROR.matcher(line);
                 if (matcher.matches()) {
-                    Dependency dependency = new Dependency(matcher.group(0));
+                    Dependency dependencyConflict = new Dependency(matcher.group(0));
+                    dependencyConflicts.add(new DependencyConflict(dependencyConflict));
                     mode = Mode.FOUND_DEPENDENCY;
                 }
                 break;
             case FOUND_DEPENDENCY:
-                // This line is the start of a dependency - we know this is the application
-
-                // Populate data
+                matcher = CONVERGE_LINE.matcher(line);
+                if (!matcher.matches()) {
+                    throw new RuntimeException("Didn't find expected convergence data: " + line);
+                }
+                conflict = new DependencyConflictData(null, new Dependency(matcher.group(2)));
+                dependencyConflicts.get(dependencyConflicts.size() - 1).addConflict(conflict);
 
                 mode = Mode.PROCESS_CHILDREN;
                 break;
@@ -76,7 +90,31 @@ public class ConvergenceParser {
                     break;
                 }
 
-                // TODO: Deal with indentation tracking and populate data
+                matcher = CONVERGE_LINE.matcher(line);
+                if (!matcher.matches()) {
+                    throw new RuntimeException("Expected convergence information, not: " + line);
+                }
+
+                // First time we find an indent, keep track.  This will help with figuring
+                if (indentStep == null && matcher.group(1).length() > 0) {
+                    indentStep = matcher.group(1);
+                }
+
+                // determine the indent level
+                int indentLevel = matcher.group(1).length() / indentStep.length();
+
+                // find the parent out of the most recent conflicts
+
+                List<DependencyConflictData> currentHierarchy =
+                        dependencyConflicts.get(dependencyConflicts.size() - 1)
+                                .getConflictHierarchy();
+
+                DependencyConflictData parent = currentHierarchy.get(currentHierarchy.size() - 1)
+                        .findFindLastChild(indentLevel - 1);
+
+                // create a dependency
+                conflict = new DependencyConflictData(parent, new Dependency(matcher.group(2)));
+                parent.addChild(conflict);
 
                 break;
         }

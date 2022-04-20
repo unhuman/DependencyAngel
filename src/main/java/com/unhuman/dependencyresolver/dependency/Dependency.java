@@ -52,4 +52,12 @@ public class Dependency {
     public String getScope() {
         return scope;
     }
+
+    public boolean matchingArtifact(Dependency other) {
+        return (this.getGroup().equals(other.getGroup()) && this.getArtifact().equals(other.getArtifact()));
+    }
+
+    public String getDisplayName() {
+        return String.format("%s:%s", getGroup(), getArtifact());
+    }
 }
