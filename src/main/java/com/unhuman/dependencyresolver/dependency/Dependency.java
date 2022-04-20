@@ -49,8 +49,16 @@ public class Dependency {
         return version;
     }
 
+    protected void setVersion(Version newVersion) {
+        this.version = newVersion;
+    }
+
     public String getScope() {
         return scope;
+    }
+
+    protected void setScope(String newScope) {
+        this.scope = newScope;
     }
 
     public boolean matchingArtifact(Dependency other) {

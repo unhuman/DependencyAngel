@@ -145,7 +145,7 @@ public class Version implements Comparable {
         return (compareResult == 0) ? 0 : compareResult / Math.abs(compareResult);
     }
 
-    public String getVersion() {
+    public String toString() {
         return version;
     }
 

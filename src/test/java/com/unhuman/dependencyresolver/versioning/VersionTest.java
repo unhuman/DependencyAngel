@@ -34,7 +34,7 @@ public class VersionTest {
 
     @Test
     public void validateGetVersion() {
-        Assertions.assertEquals("0.1.0.2", SEMANTIC_VERSION_THREE_HOTFIX_TWO.getVersion());
+        Assertions.assertEquals("0.1.0.2", SEMANTIC_VERSION_THREE_HOTFIX_TWO.toString());
     }
 
     @Test

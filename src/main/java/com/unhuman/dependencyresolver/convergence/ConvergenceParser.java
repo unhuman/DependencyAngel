@@ -62,7 +62,7 @@ public class ConvergenceParser {
             case LOOKING:
                 matcher = CONVERGE_ERROR.matcher(line);
                 if (matcher.matches()) {
-                    Dependency dependencyConflict = new Dependency(matcher.group(0));
+                    Dependency dependencyConflict = new Dependency(matcher.group(1));
                     dependencyConflicts.add(new DependencyConflict(dependencyConflict));
                     mode = Mode.FOUND_DEPENDENCY;
                 }
@@ -105,16 +105,19 @@ public class ConvergenceParser {
 
                 // find the parent out of the most recent conflicts
 
-                List<DependencyConflictData> currentHierarchy =
-                        dependencyConflicts.get(dependencyConflicts.size() - 1)
-                                .getConflictHierarchy();
+                DependencyConflict currentConflict = dependencyConflicts.get(dependencyConflicts.size() - 1);
+                List<DependencyConflictData> currentHierarchy = currentConflict.getConflictHierarchy();
 
                 DependencyConflictData parent = currentHierarchy.get(currentHierarchy.size() - 1)
                         .findFindLastChild(indentLevel - 1);
 
                 // create a dependency
-                conflict = new DependencyConflictData(parent, new Dependency(matcher.group(2)));
+                Dependency newDependency = new Dependency(matcher.group(2));
+                conflict = new DependencyConflictData(parent, newDependency);
                 parent.addChild(conflict);
+
+                // Update the version of the item in the conflict to be latest
+                currentConflict.updateConflictInfo(newDependency);
 
                 break;
         }

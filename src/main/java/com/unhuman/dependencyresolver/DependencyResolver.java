@@ -90,28 +90,28 @@ public class DependencyResolver {
 //        // parse out TGF Data
 //        DependencyNode root = DependencyHelper.convertTgfData(tgfData);
 
+        // this processing may take multiple iterations if there are nested dependencies
         List<DependencyConflict> conflicts;
-        try {
-            List<String> analyzeResults = executeCommand(directoryFile, CONVERGE_ERROR, MVN_COMMAND,
-                    "dependency:analyze");
+        do {
+            try {
+                List<String> analyzeResults = executeCommand(directoryFile, CONVERGE_ERROR, MVN_COMMAND,
+                        "dependency:analyze");
 
-            ConvergenceParser convergenceParser = ConvergenceParser.from(analyzeResults);
-            conflicts = convergenceParser.getDependencyConflicts();
-        } catch (RuntimeException re) {
-            throw re;
-        } catch (Exception e) {
-            throw new RuntimeException("Problem with analyze", e);
-        }
+                ConvergenceParser convergenceParser = ConvergenceParser.from(analyzeResults);
+                conflicts = convergenceParser.getDependencyConflicts();
+            } catch (RuntimeException re) {
+                throw re;
+            } catch (Exception e) {
+                throw new RuntimeException("Problem with analyze", e);
+            }
 
-        conflicts = new ArrayList<>(conflicts);
-        // this processing may take multiple tries
-        while (conflicts.size() > 0) {
+            conflicts = new ArrayList<>(conflicts);
             Iterator<DependencyConflict> conflictIterator = conflicts.iterator();
             while(conflictIterator.hasNext()) {
                 DependencyConflict currentConflict = conflictIterator.next();
-                System.out.println("Processing conflict: " + currentConflict.getDependency().getDisplayName());
-
-                // now figure out the data in the conflict
+                System.out.println("Processing conflict: " + currentConflict.getDisplayName()
+                        + " to version: " + currentConflict.getVersion()
+                        + " with scope: " + currentConflict.getScope());
 
                 conflictIterator.remove();
             }
@@ -126,7 +126,7 @@ public class DependencyResolver {
             } catch (Exception e) {
                 throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
             }
-        }
+        } while (conflicts.size() > 0);
 
         // Happiness
     }
