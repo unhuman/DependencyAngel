@@ -32,6 +32,10 @@ public class ResolvedDependencyDetails extends ArrayList<Dependency> {
         return (this.size() > 1);
     }
 
+    public boolean needsExclusion(Version version) {
+        return (hasMultipleDependencies() || version.compareTo(this.getLatestVersion()) > 0);
+    }
+
     public String getResolvedScope() {
         String scope = null;
         for (Dependency data: this) {

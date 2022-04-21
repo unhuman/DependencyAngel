@@ -2,6 +2,7 @@ package com.unhuman.dependencyresolver;
 
 import com.unhuman.dependencyresolver.convergence.*;
 import com.unhuman.dependencyresolver.pom.PomManipulator;
+import com.unhuman.dependencyresolver.versioning.Version;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
@@ -154,10 +155,26 @@ public class DependencyResolver {
 
                 // Update dependencies
                 for (ResolvedDependencyDetailsList workItem: workList) {
-                    // Determine the explicit dependency scope
+                    // Determine the required scope and version
                     String explicitDependencyScope = (workItem.getResolvedScope() != null)
                             ? workItem.getResolvedScope() : "compile";
+                    Version explicitVersion = (workItem.getLatestVersion());
 
+                    boolean needsExplicitDependency = true;
+                    for (ResolvedDependencyDetails workDependency: workItem) {
+                        if (workDependency.isExplicitDependency()) {
+                            needsExplicitDependency = false;
+                            // update the explicit dependency with version + scope
+                        }
+                        if (workDependency.needsExclusion(explicitVersion)) {
+                            // exclude the dependency
+                        }
+                        // else is scope satisfied here - if it was, we don't need explicit dependency
+                    }
+
+                    if (needsExplicitDependency) {
+                        // add explicit dependency
+                    }
                 }
 
                 pomManipulator.saveFile();
