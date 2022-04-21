@@ -1,8 +1,6 @@
 package com.unhuman.dependencyresolver;
 
-import com.unhuman.dependencyresolver.convergence.ConvergenceParser;
-import com.unhuman.dependencyresolver.convergence.DependencyConflict;
-import com.unhuman.dependencyresolver.convergence.DependencyConflictData;
+import com.unhuman.dependencyresolver.convergence.*;
 import com.unhuman.dependencyresolver.pom.PomManipulator;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
@@ -114,6 +112,8 @@ public class DependencyResolver {
 
             conflicts = new ArrayList<>(conflicts);
             List<DependencyConflict> handledDependencies = new ArrayList<>();
+
+            List<ResolvedDependencyDetailsList> workList = new ArrayList<>();
             while (conflicts.size() > 0) {
                 DependencyConflict currentConflict = conflicts.remove(0);
                 handledDependencies.add(currentConflict);
@@ -122,7 +122,12 @@ public class DependencyResolver {
                         + " to version: " + currentConflict.getVersion()
                         + " with scope: " + currentConflict.getScope());
 
-                // TODO: Figure out what needs to be done
+                // Determine actions to be performed
+                ResolvedDependencyDetailsList workToDo = new ResolvedDependencyDetailsList();
+                for (DependencyConflictData data: currentConflict.getConflictHierarchy()) {
+                    workToDo.add(data.getEndDependencyInfo());
+                }
+                workList.add(workToDo);
 
                 // don't process further if the next dependency includes anything changed by this one
                 // that'd be handled in the next iteration
@@ -148,6 +153,12 @@ public class DependencyResolver {
                 PomManipulator pomManipulator = new PomManipulator((pomFilePath));
 
                 // Update dependencies
+                for (ResolvedDependencyDetailsList workItem: workList) {
+                    // Determine the explicit dependency scope
+                    String explicitDependencyScope = (workItem.getResolvedScope() != null)
+                            ? workItem.getResolvedScope() : "compile";
+
+                }
 
                 pomManipulator.saveFile();
             } catch (Exception e) {

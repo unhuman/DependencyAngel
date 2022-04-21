@@ -1,7 +1,6 @@
 package com.unhuman.dependencyresolver.convergence;
 
 import com.unhuman.dependencyresolver.dependency.Dependency;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,7 +10,7 @@ public class DependencyConflictData extends Dependency {
 
     public DependencyConflictData(DependencyConflictData parent, Dependency dependency) {
         super(dependency);
-        this.parent = null;
+        this.parent = parent;
         this.children = new ArrayList<>();
     }
 
@@ -39,5 +38,32 @@ public class DependencyConflictData extends Dependency {
         }
 
         return false;
+    }
+
+    public ResolvedDependencyDetails getEndDependencyInfo() {
+        if (parent != null) {
+            throw new RuntimeException("Illegal use of this method - top level only");
+        }
+
+        if (children.size() != 1) {
+            throw new RuntimeException("Expected only a single child at parent level");
+        }
+
+        // let's find all the dependencies
+        DependencyConflictData initalDependency = children.get(0);
+        return new ResolvedDependencyDetails(initalDependency, getEndChildren(initalDependency));
+    }
+
+    private List<Dependency> getEndChildren(DependencyConflictData data) {
+        List<Dependency> endChildren = new ArrayList<>();
+        if (data.children.size() == 0) {
+            endChildren.add(data);
+        } else {
+            for (DependencyConflictData child: data.children) {
+                endChildren.addAll(getEndChildren(child));
+            }
+        }
+
+        return endChildren;
     }
 }
