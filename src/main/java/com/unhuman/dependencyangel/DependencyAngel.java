@@ -279,7 +279,7 @@ public class DependencyAngel {
     }
 
     public static void main(String[] args) {
-        ArgumentParser parser = ArgumentParsers.newFor("Checksum").build()
+        ArgumentParser parser = ArgumentParsers.newFor(DependencyAngel.class.getSimpleName()).build()
                 .defaultHelp(true)
                 .description("Resolve conflicting dependencies (exclusions).");
         parser.addArgument("-c", "--cleanOnly")
