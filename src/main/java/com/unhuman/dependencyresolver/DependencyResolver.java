@@ -34,11 +34,14 @@ public class DependencyResolver {
     private String directory;
     private Map<String, String> environmentVars;
     private boolean skipPrompts;
+    private boolean cleanOnly;
 
-    protected DependencyResolver(String directory, Map<String, String> environmentVars, boolean skipPrompts) {
+    protected DependencyResolver(String directory, Map<String, String> environmentVars,
+                                 boolean skipPrompts, boolean cleanOnly) {
         this.directory = directory;
         this.environmentVars = environmentVars;
         this.skipPrompts = skipPrompts;
+        this.cleanOnly = cleanOnly;
     }
 
     protected void process() {
@@ -61,8 +64,12 @@ public class DependencyResolver {
             pomManipulator.stripExclusions();
             pomManipulator.stripForcedTransitiveDependencies();
             pomManipulator.saveFile();
+            System.out.println("pom.xml file cleaned");
         } catch (Exception e) {
             throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
+        }
+        if (cleanOnly) {
+            return;
         }
 
         // Run maven build - see if there are any dependency conflicts
@@ -279,6 +286,11 @@ public class DependencyResolver {
         ArgumentParser parser = ArgumentParsers.newFor("Checksum").build()
                 .defaultHelp(true)
                 .description("Resolve conflicting dependencies (exclusions).");
+        parser.addArgument("-c", "--cleanOnly")
+                .type(Boolean.class)
+                .required(false)
+                .setDefault(false)
+                .help("Perform clean up only");
         parser.addArgument("-e", "--env")
                 .type(String.class)
                 .required(false)
@@ -312,9 +324,10 @@ public class DependencyResolver {
         }
 
         boolean skipPrompts = ns.getBoolean("skipPrompts");
+        boolean cleanOnly = ns.getBoolean("cleanOnly");
         String directory = ns.getString("directory");
 
-        DependencyResolver resolver = new DependencyResolver(directory, environmentVars, skipPrompts);
+        DependencyResolver resolver = new DependencyResolver(directory, environmentVars, skipPrompts, cleanOnly);
         resolver.process();
     }
 }
