@@ -7,11 +7,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ResolvedDependencyDetails extends ArrayList<Dependency> {
-    Dependency initialDependency;
+    private Dependency initialDependency;
 
     public ResolvedDependencyDetails(Dependency initialDependency, List<Dependency> endDependencies) {
         this.initialDependency = initialDependency;
         super.addAll(endDependencies);
+    }
+
+    public Dependency getInitialDependency() {
+        return initialDependency;
     }
 
     public boolean isExplicitDependency() {

@@ -2,7 +2,6 @@ package com.unhuman.dependencyresolver.pom;
 
 import com.unhuman.dependencyresolver.versioning.Version;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
@@ -19,6 +18,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 
 public class PomManipulator {
@@ -26,15 +27,16 @@ public class PomManipulator {
     private static final String DEPENDENCIES_TAG = "dependencies";
     private static final String DEPENDENCY_TAG = "dependency";
     private static final String GROUP_ID_TAG = "groupId";
-    private static final String ARTIFACT_TAG = "artifact";
+    private static final String ARTIFACT_ID_TAG = "artifactId";
     private static final String VERSION_TAG = "version";
     private static final String SCOPE_TAG = "scope";
     private static final String EXCLUSIONS_TAG = "exclusions";
+    private static final String EXCLUSION_TAG = "exclusion";
 
     private static final String NEW_LINE = "\n";
 
-    private static final String COMMENT_ADD_DEPENDENCY_START = "Forced Transitive Dependency Start";
-    private static final String COMMENT_ADD_DEPENDENCY_END = "Forced Transitive Dependency End";
+    private static final String COMMENT_ADD_DEPENDENCY_START = "Forced Dependency Start";
+    private static final String COMMENT_ADD_DEPENDENCY_END = "Forced Dependency End";
     private String filename;
 
     private Document document;
@@ -44,6 +46,7 @@ public class PomManipulator {
 
     private String dependenciesIndentation;
     private String dependencyIndentation;
+    private String nestedIndentation = "    ";
     private String dependencyContentIndentation;
 
     public PomManipulator(String filename) throws ParserConfigurationException, IOException, SAXException {
@@ -64,9 +67,10 @@ public class PomManipulator {
         dependenciesIndentation = findNodeIndentation(dependenciesNode);
 
         // Find indentations we need to use for child nodes
-        Node dependencyNode = findChildNode(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+        List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
         Node groupIdNode = null;
-        if (dependencyNode != null) {
+        if (dependencyNodes.size() > 0) {
+            Node dependencyNode = dependencyNodes.get(0);
             if (dependencyIndentation == null) {
                 dependencyIndentation = findNodeIndentation(dependencyNode);
             }
@@ -75,19 +79,36 @@ public class PomManipulator {
         if (groupIdNode != null) {
             if (dependencyContentIndentation == null) {
                 dependencyContentIndentation = findNodeIndentation(groupIdNode);
+                if (dependencyContentIndentation.length() > dependencyIndentation.length()) {
+                    nestedIndentation = dependencyContentIndentation.substring(dependencyIndentation.length());
+                }
             }
         }
     }
 
-    Node findChildNode(Node parentNode, short nodeType, String nodeName) {
+    List<Node> findChildNodes(Node parentNode, short nodeType, String nodeName) {
+        List<Node> nodes = new ArrayList<>();
         NodeList childNodeList = parentNode.getChildNodes();
         for (int i = 0; i < childNodeList.getLength(); i++) {
             Node childNodeCheck = childNodeList.item(i);
             if (childNodeCheck.getNodeType() == nodeType && childNodeCheck.getNodeName().equals(nodeName)) {
-                return childNodeCheck;
+                nodes.add(childNodeCheck);
             }
         }
-        return null;
+        return nodes;
+    }
+
+    Node findChildNode(Node parentNode, short nodeType, String nodeName) {
+        List<Node> nodes = findChildNodes(parentNode, nodeType, nodeName);
+        switch (nodes.size()) {
+            case 0:
+                return null;
+            case 1:
+                return nodes.get(0);
+            default:
+                throw new RuntimeException(
+                        "Expected 0 or 1 node named: " + nodeName + " but found " + nodes.size());
+        }
     }
 
     String findNodeIndentation(Node node) {
@@ -98,8 +119,54 @@ public class PomManipulator {
         return null;
     }
 
-    // TODO move this
-    public void addForcedTransitiveDependencyNode(String groupId, String artifactId, Version version, String scope) {
+    public void addExclusion(String parentGroupId, String parentArtifactId,
+                             String exclusionGroupId, String exclusionArtifactId) {
+        List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+        for (Node dependencyNode: dependencyNodes) {
+            Node groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
+            Node artifactIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, ARTIFACT_ID_TAG);
+
+            String exclusionsIndent = findNodeIndentation(groupIdNode);
+
+            if (parentGroupId.equals(groupIdNode.getTextContent())
+                    && parentArtifactId.equals(artifactIdNode.getTextContent())) {
+                // either find or create an <exclusions> node
+                Node exclusionsNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, EXCLUSIONS_TAG);
+                if (exclusionsNode == null) {
+                    exclusionsNode = document.createElement(EXCLUSIONS_TAG);
+                    dependencyNode.appendChild(document.createTextNode(exclusionsIndent));
+                    dependencyNode.appendChild(exclusionsNode);
+                    dependencyNode.appendChild(document.createTextNode(dependencyIndentation));
+                }
+
+                // add a new <exclusion>
+                Node newExclusion = document.createElement(EXCLUSION_TAG);
+
+                newExclusion.appendChild(document.createTextNode(
+                        exclusionsIndent + nestedIndentation + nestedIndentation));
+                Node excludeGroupIdNode = document.createElement(GROUP_ID_TAG);
+                excludeGroupIdNode.setTextContent(exclusionGroupId);
+                newExclusion.appendChild(excludeGroupIdNode);
+
+                newExclusion.appendChild(document.createTextNode(
+                        dependencyContentIndentation + nestedIndentation + nestedIndentation));
+                Node excludeArtifactIdNode = document.createElement(ARTIFACT_ID_TAG);
+                excludeArtifactIdNode.setTextContent(exclusionArtifactId);
+                newExclusion.appendChild(excludeArtifactIdNode);
+
+                // add an indentation to the end of the last element so the closing element looks correct
+                newExclusion.appendChild(document.createTextNode(dependencyContentIndentation + nestedIndentation));
+
+                exclusionsNode.appendChild(document.createTextNode(dependencyContentIndentation + nestedIndentation));
+
+                exclusionsNode.appendChild(newExclusion);
+
+                exclusionsNode.appendChild(document.createTextNode(dependencyContentIndentation));
+            }
+        }
+    }
+
+    public void addForcedDependencyNode(String groupId, String artifactId, Version version, String scope) {
         changed = true;
 
         dependenciesNode.appendChild(document.createTextNode(dependencyIndentation));
@@ -113,7 +180,7 @@ public class PomManipulator {
         newDependency.appendChild(groupIdNode);
 
         newDependency.appendChild(document.createTextNode(dependencyContentIndentation));
-        Node artifactNode = document.createElement(ARTIFACT_TAG);
+        Node artifactNode = document.createElement(ARTIFACT_ID_TAG);
         artifactNode.setTextContent(artifactId);
         newDependency.appendChild(artifactNode);
 
@@ -153,13 +220,13 @@ public class PomManipulator {
                 if (Node.COMMENT_NODE == node.getNodeType()) {
                     if (COMMENT_ADD_DEPENDENCY_START.equals(node.getTextContent().trim())) {
                         if (deleting) {
-                            throw new RuntimeException("Invalid Transitive Dependency Start comment tag");
+                            throw new RuntimeException("Invalid Forced Dependency Start comment tag");
                         }
                         // this will be deleted below
                         deleting = true;
                     } else if (COMMENT_ADD_DEPENDENCY_END.equals(node.getTextContent().trim())) {
                         if (!deleting) {
-                            throw new RuntimeException("Invalid Transitive Dependency End comment tag");
+                            throw new RuntimeException("Invalid Forced Dependency End comment tag");
                         }
                         // we have to delete this here, because we're going to turn deleting off
                         deleteNode(node, true);
@@ -177,7 +244,7 @@ public class PomManipulator {
         }
 
         if (deleting) {
-            throw new RuntimeException("Missing Transitive Dependency End comment tag");
+            throw new RuntimeException("Missing Forced Dependency End comment tag");
         }
     }
 

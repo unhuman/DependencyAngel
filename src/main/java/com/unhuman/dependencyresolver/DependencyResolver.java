@@ -165,15 +165,20 @@ public class DependencyResolver {
                         if (workDependency.isExplicitDependency()) {
                             needsExplicitDependency = false;
                             // update the explicit dependency with version + scope
+                            System.out.println("HERE1");
                         }
                         if (workDependency.needsExclusion(explicitVersion)) {
                             // exclude the dependency
+                            pomManipulator.addExclusion(workDependency.getInitialDependency().getGroup(),
+                                    workDependency.getInitialDependency().getArtifact(),
+                                    workItem.getGroup(), workItem.getArtifact());
                         }
                         // else is scope satisfied here - if it was, we don't need explicit dependency
                     }
 
                     if (needsExplicitDependency) {
-                        // add explicit dependency
+                        pomManipulator.addForcedDependencyNode(workItem.getGroup(), workItem.getArtifact(),
+                                workItem.getLatestVersion(), explicitDependencyScope);
                     }
                 }
 

@@ -18,6 +18,24 @@ public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyD
         return false;
     }
 
+    @Override
+    public boolean add(ResolvedDependencyDetails resolvedDependencyDetails) {
+        // don't allow adding a duplicate start / end item
+        for (ResolvedDependencyDetails currentItem: this) {
+            if (currentItem.getInitialDependency().getGroup()
+                    .equals(resolvedDependencyDetails.getInitialDependency().getGroup())
+                && currentItem.getInitialDependency().getArtifact()
+                    .equals(resolvedDependencyDetails.getInitialDependency().getArtifact())
+                && currentItem.get(0).getGroup()
+                    .equals(resolvedDependencyDetails.get(0).getGroup())
+                && currentItem.get(0).getArtifact()
+                    .equals(resolvedDependencyDetails.get(0).getArtifact())) {
+                return false;
+            }
+        }
+        return super.add(resolvedDependencyDetails);
+    }
+
     /**
      * gets the latest version that is used across all the dependencies
      * @return
@@ -60,5 +78,13 @@ public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyD
             }
         }
         return scope;
+    }
+
+    public String getGroup() {
+        return this.get(0).get(0).getGroup();
+    }
+
+    public String getArtifact() {
+        return this.get(0).get(0).getGroup();
     }
 }
