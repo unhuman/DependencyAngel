@@ -1,14 +1,14 @@
-package com.unhuman.dependencyresolver.utility;
+package com.unhuman.dependencyangel.utility;
 
-import com.unhuman.dependencyresolver.tgf.TgfData;
-import com.unhuman.dependencyresolver.tgf.TgfProcessor;
-import com.unhuman.dependencyresolver.tree.DependencyNode;
+import com.unhuman.dependencyangel.tgf.TgfData;
+import com.unhuman.dependencyangel.tgf.TgfProcessor;
+import com.unhuman.dependencyangel.tree.DependencyNode;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Scanner;
 
-import static com.unhuman.dependencyresolver.tgf.TgfProcessorTest.VALID_TGF_DATA;
+import static com.unhuman.dependencyangel.tgf.TgfProcessorTest.VALID_TGF_DATA;
 
 public class DependencyHelperTest {
     @Test

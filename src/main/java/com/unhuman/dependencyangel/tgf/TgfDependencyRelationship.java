@@ -1,4 +1,4 @@
-package com.unhuman.dependencyresolver.tgf;
+package com.unhuman.dependencyangel.tgf;
 
 public class TgfDependencyRelationship {
     private String parent;

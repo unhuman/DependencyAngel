@@ -1,15 +1,15 @@
-package com.unhuman.dependencyresolver;
+package com.unhuman.dependencyangel;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class DependencyResolverConfig {
+public class DependencyAngelConfig {
     private String directory;
     private Map<String, String> environmentVars;
     private boolean skipPrompts;
     private boolean cleanOnly;
 
-    public DependencyResolverConfig(String directory) {
+    public DependencyAngelConfig(String directory) {
         this.directory = directory;
         this.environmentVars = new HashMap<>();
         this.skipPrompts = false;

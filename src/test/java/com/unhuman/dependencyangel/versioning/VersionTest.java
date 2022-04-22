@@ -1,4 +1,4 @@
-package com.unhuman.dependencyresolver.versioning;
+package com.unhuman.dependencyangel.versioning;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

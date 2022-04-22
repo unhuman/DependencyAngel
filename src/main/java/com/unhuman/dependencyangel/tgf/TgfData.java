@@ -1,6 +1,6 @@
-package com.unhuman.dependencyresolver.tgf;
+package com.unhuman.dependencyangel.tgf;
 
-import com.unhuman.dependencyresolver.dependency.Dependency;
+import com.unhuman.dependencyangel.dependency.Dependency;
 
 import java.util.*;
 

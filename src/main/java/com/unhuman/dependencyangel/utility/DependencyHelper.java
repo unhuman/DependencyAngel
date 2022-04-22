@@ -1,9 +1,8 @@
-package com.unhuman.dependencyresolver.utility;
+package com.unhuman.dependencyangel.utility;
 
-import com.unhuman.dependencyresolver.dependency.Dependency;
-import com.unhuman.dependencyresolver.tgf.TgfData;
-import com.unhuman.dependencyresolver.tgf.TgfDependencyRelationship;
-import com.unhuman.dependencyresolver.tree.DependencyNode;
+import com.unhuman.dependencyangel.tgf.TgfData;
+import com.unhuman.dependencyangel.tgf.TgfDependencyRelationship;
+import com.unhuman.dependencyangel.tree.DependencyNode;
 
 import java.util.HashMap;
 import java.util.List;

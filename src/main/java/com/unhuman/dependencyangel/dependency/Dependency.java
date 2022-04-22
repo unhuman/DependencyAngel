@@ -1,6 +1,6 @@
-package com.unhuman.dependencyresolver.dependency;
+package com.unhuman.dependencyangel.dependency;
 
-import com.unhuman.dependencyresolver.versioning.Version;
+import com.unhuman.dependencyangel.versioning.Version;
 
 public class Dependency {
     private String group;

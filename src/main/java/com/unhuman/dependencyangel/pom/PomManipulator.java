@@ -1,6 +1,6 @@
-package com.unhuman.dependencyresolver.pom;
+package com.unhuman.dependencyangel.pom;
 
-import com.unhuman.dependencyresolver.versioning.Version;
+import com.unhuman.dependencyangel.versioning.Version;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;

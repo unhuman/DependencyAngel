@@ -1,8 +1,8 @@
-package com.unhuman.dependencyresolver;
+package com.unhuman.dependencyangel;
 
-import com.unhuman.dependencyresolver.convergence.*;
-import com.unhuman.dependencyresolver.pom.PomManipulator;
-import com.unhuman.dependencyresolver.versioning.Version;
+import com.unhuman.dependencyangel.convergence.*;
+import com.unhuman.dependencyangel.pom.PomManipulator;
+import com.unhuman.dependencyangel.versioning.Version;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
@@ -18,9 +18,9 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import static com.unhuman.dependencyresolver.convergence.ConvergenceParser.CONVERGE_ERROR;
+import static com.unhuman.dependencyangel.convergence.ConvergenceParser.CONVERGE_ERROR;
 
-public class DependencyResolver {
+public class DependencyAngel {
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
     private static final String MVN_COMMAND = (IS_WINDOWS) ? "mvn.cmd" : "mvn";
     private static final String TEMP_FILE_PREFIX = "dependency-resolver-";
@@ -31,9 +31,9 @@ public class DependencyResolver {
     private static final Pattern CONVERGENCE_EXPECTED_FILE_LINE =
             Pattern.compile("DependencyConvergence failed with message");
 
-    DependencyResolverConfig config;
+    DependencyAngelConfig config;
 
-    protected DependencyResolver(DependencyResolverConfig config) {
+    protected DependencyAngel(DependencyAngelConfig config) {
         this.config = config;
     }
 
@@ -307,12 +307,12 @@ public class DependencyResolver {
             System.exit(1);
         }
 
-        DependencyResolverConfig config = new DependencyResolverConfig(ns.getString("directory"));
+        DependencyAngelConfig config = new DependencyAngelConfig(ns.getString("directory"));
         config.addEnvironmentVars(getEnvParameterMap(ns.getString("env")));
         config.setCleanOnly(ns.getBoolean("cleanOnly"));
         config.setSkipPrompts(ns.getBoolean("skipPrompts"));
 
-        DependencyResolver resolver = new DependencyResolver(config);
+        DependencyAngel resolver = new DependencyAngel(config);
         resolver.process();
     }
 

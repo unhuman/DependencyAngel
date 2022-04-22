@@ -1,7 +1,7 @@
-package com.unhuman.dependencyresolver.convergence;
+package com.unhuman.dependencyangel.convergence;
 
-import com.unhuman.dependencyresolver.dependency.Dependency;
-import com.unhuman.dependencyresolver.versioning.Version;
+import com.unhuman.dependencyangel.dependency.Dependency;
+import com.unhuman.dependencyangel.versioning.Version;
 
 import java.util.ArrayList;
 import java.util.List;
