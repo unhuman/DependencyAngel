@@ -165,7 +165,10 @@ public class DependencyResolver {
                         if (workDependency.isExplicitDependency()) {
                             needsExplicitDependency = false;
                             // update the explicit dependency with version + scope
-                            System.out.println("HERE1");
+                            pomManipulator.updateExplicitVersion(
+                                    workDependency.getInitialDependency().getGroup(),
+                                    workDependency.getInitialDependency().getArtifact(),
+                                    workItem.getLatestVersion(), explicitDependencyScope);
                         }
                         if (workDependency.needsExclusion(explicitVersion)) {
                             // exclude the dependency

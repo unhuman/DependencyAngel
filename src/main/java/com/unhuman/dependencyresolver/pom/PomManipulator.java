@@ -121,6 +121,7 @@ public class PomManipulator {
 
     public void addExclusion(String parentGroupId, String parentArtifactId,
                              String exclusionGroupId, String exclusionArtifactId) {
+        changed = true;
         List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
         for (Node dependencyNode: dependencyNodes) {
             Node groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
@@ -166,6 +167,32 @@ public class PomManipulator {
         }
     }
 
+    public void updateExplicitVersion(String groupId, String artifactId, Version version, String scope) {
+        changed = true;
+        List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+        for (Node dependencyNode: dependencyNodes) {
+            Node groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
+            Node artifactIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, ARTIFACT_ID_TAG);
+
+            if (groupId.equals(groupIdNode.getTextContent())
+                    && artifactId.equals(artifactIdNode.getTextContent())) {
+                Node versionNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, VERSION_TAG);
+                if (versionNode != null) {
+                    // TODO: Handle version in properties
+                    versionNode.setTextContent(version.toString());
+                }
+                // TODO: Handle missing version
+
+                Node scopeNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, SCOPE_TAG);
+                if (scopeNode != null) {
+                    scopeNode.setTextContent(scope);
+                }
+                // if scope doesn't exist, that's fine - default is "compile"
+            }
+        }
+
+    }
+
     public void addForcedDependencyNode(String groupId, String artifactId, Version version, String scope) {
         changed = true;
 
@@ -183,6 +210,8 @@ public class PomManipulator {
         Node artifactNode = document.createElement(ARTIFACT_ID_TAG);
         artifactNode.setTextContent(artifactId);
         newDependency.appendChild(artifactNode);
+
+        // TODO: Handle version in properties
 
         newDependency.appendChild(document.createTextNode(dependencyContentIndentation));
         Node versionNode = document.createElement(VERSION_TAG);

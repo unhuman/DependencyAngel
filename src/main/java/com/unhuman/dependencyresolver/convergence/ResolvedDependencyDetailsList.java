@@ -85,6 +85,6 @@ public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyD
     }
 
     public String getArtifact() {
-        return this.get(0).get(0).getGroup();
+        return this.get(0).get(0).getArtifact();
     }
 }
