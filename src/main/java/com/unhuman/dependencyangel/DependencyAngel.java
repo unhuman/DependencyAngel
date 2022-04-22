@@ -23,7 +23,7 @@ import static com.unhuman.dependencyangel.convergence.ConvergenceParser.CONVERGE
 public class DependencyAngel {
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
     private static final String MVN_COMMAND = (IS_WINDOWS) ? "mvn.cmd" : "mvn";
-    private static final String TEMP_FILE_PREFIX = "dependency-resolver-";
+    private static final String TEMP_FILE_PREFIX = "dependency-angel-";
     private static final String TEMP_FILE_SUFFIX = ".tmp";
     private static final Pattern GENERATED_EXPECTED_FILE_LINE =
             Pattern.compile(String.format("Wrote dependency tree to:.*%s.*%s",
@@ -312,8 +312,8 @@ public class DependencyAngel {
         config.setCleanOnly(ns.getBoolean("cleanOnly"));
         config.setSkipPrompts(ns.getBoolean("skipPrompts"));
 
-        DependencyAngel resolver = new DependencyAngel(config);
-        resolver.process();
+        DependencyAngel angel = new DependencyAngel(config);
+        angel.process();
     }
 
     protected static Map<String, String> getEnvParameterMap(String env) {
