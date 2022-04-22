@@ -31,29 +31,22 @@ public class DependencyResolver {
     private static final Pattern CONVERGENCE_EXPECTED_FILE_LINE =
             Pattern.compile("DependencyConvergence failed with message");
 
-    private String directory;
-    private Map<String, String> environmentVars;
-    private boolean skipPrompts;
-    private boolean cleanOnly;
+    DependencyResolverConfig config;
 
-    protected DependencyResolver(String directory, Map<String, String> environmentVars,
-                                 boolean skipPrompts, boolean cleanOnly) {
-        this.directory = directory;
-        this.environmentVars = environmentVars;
-        this.skipPrompts = skipPrompts;
-        this.cleanOnly = cleanOnly;
+    protected DependencyResolver(DependencyResolverConfig config) {
+        this.config = config;
     }
 
     protected void process() {
-        File directoryFile = new File(directory).getAbsoluteFile();
+        File directoryFile = new File(config.getDirectory()).getAbsoluteFile();
         if (!directoryFile.isDirectory()) {
-            throw new RuntimeException(String.format("Directory: %s is not a directory", directory));
+            throw new RuntimeException(String.format("Directory: %s is not a directory", config.getDirectory()));
         }
 
-        String pomFilePath = directory + File.separator + "pom.xml";
+        String pomFilePath = config.getDirectory() + File.separator + "pom.xml";
         Path pomPath = Paths.get(pomFilePath);
         if (!Files.isRegularFile(pomPath)) {
-            throw new RuntimeException(String.format("Directory: %s does not contain pom.xml", directory));
+            throw new RuntimeException(String.format("Directory: %s does not contain pom.xml", config.getDirectory()));
         }
 
         allowProcessing();
@@ -68,7 +61,7 @@ public class DependencyResolver {
         } catch (Exception e) {
             throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
         }
-        if (cleanOnly) {
+        if (config.isCleanOnly()) {
             return;
         }
 
@@ -99,6 +92,7 @@ public class DependencyResolver {
         // this processing may take multiple iterations if there are nested dependencies
         int itemsToProcess = -1;
         List<DependencyConflict> conflicts;
+        int iteration = 0;
         do {
             try {
                 List<String> analyzeResults = executeCommand(directoryFile, CONVERGE_ERROR, MVN_COMMAND,
@@ -106,6 +100,8 @@ public class DependencyResolver {
 
                 ConvergenceParser convergenceParser = ConvergenceParser.from(analyzeResults);
                 conflicts = convergenceParser.getDependencyConflicts();
+                System.out.println(String.format("Iteration %d: %d conflicts remaining",
+                        ++iteration, conflicts.size()));
 
                 // Track if we are stuck - shouldn't happen, but let's be safe
                 if (conflicts.size() > 0 && itemsToProcess == conflicts.size()) {
@@ -205,7 +201,7 @@ public class DependencyResolver {
      * Ensure that we can process this request / warn the user
      */
     protected void allowProcessing() {
-        if (!skipPrompts) {
+        if (!config.isSkipPrompts()) {
             while (true) {
                 try {
                     System.out.print("This is destructive - are you sure you want to continue (y/n)?: ");
@@ -236,7 +232,7 @@ public class DependencyResolver {
         try {
             ProcessBuilder builder = new ProcessBuilder(commandAndParams);
             //builder.inheritIO(); // TODO: Learn what this does - weird things with consuming output
-            builder.environment().putAll(environmentVars);
+            builder.environment().putAll(config.getEnvironmentVars());
             builder.directory(directoryFile);
             Process process = builder.start();
 
@@ -311,7 +307,16 @@ public class DependencyResolver {
             System.exit(1);
         }
 
-        String env = ns.getString("env");
+        DependencyResolverConfig config = new DependencyResolverConfig(ns.getString("directory"));
+        config.addEnvironmentVars(getEnvParameterMap(ns.getString("env")));
+        config.setCleanOnly(ns.getBoolean("cleanOnly"));
+        config.setSkipPrompts(ns.getBoolean("skipPrompts"));
+
+        DependencyResolver resolver = new DependencyResolver(config);
+        resolver.process();
+    }
+
+    protected static Map<String, String> getEnvParameterMap(String env) {
         Map<String, String> environmentVars = new HashMap<>();
         if (env != null) {
             for (String envItem: env.split(",")) {
@@ -322,12 +327,6 @@ public class DependencyResolver {
                 environmentVars.put(kv[0], kv[1]);
             }
         }
-
-        boolean skipPrompts = ns.getBoolean("skipPrompts");
-        boolean cleanOnly = ns.getBoolean("cleanOnly");
-        String directory = ns.getString("directory");
-
-        DependencyResolver resolver = new DependencyResolver(directory, environmentVars, skipPrompts, cleanOnly);
-        resolver.process();
+        return environmentVars;
     }
 }
