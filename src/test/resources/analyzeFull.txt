@@ -1,0 +1,96 @@
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ----------------------< com.unhuman:CouchbaseUI >-----------------------
+[INFO] Building CouchbaseUI 1.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] >>> maven-dependency-plugin:2.8:analyze (default-cli) > test-compile @ CouchbaseUI >>>
+[INFO]
+[INFO] --- maven-enforcer-plugin:3.0.0:enforce (enforce) @ CouchbaseUI ---
+[WARNING]
+Dependency convergence error for org.slf4j:slf4j-api:jar:1.7.2:runtime paths to dependency are:
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.codingrodent:jackson-json-crypto:jar:2.2.0:compile
+    +-org.hibernate.validator:hibernate-validator:jar:6.1.7.Final:runtime
+      +-org.jboss.logging:jboss-logging:jar:3.3.2.Final:runtime
+        +-org.slf4j:slf4j-api:jar:1.7.2:runtime
+and
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.codingrodent:jackson-json-crypto:jar:2.2.0:compile
+    +-org.slf4j:slf4j-api:jar:1.7.30:runtime
+and
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-org.slf4j:slf4j-api:jar:1.7.32:compile
+and
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-org.slf4j:slf4j-jdk14:jar:1.7.32:compile
+    +-org.slf4j:slf4j-api:jar:1.7.32:compile
+
+[WARNING]
+Dependency convergence error for org.jboss.logging:jboss-logging:jar:3.3.2.Final:runtime paths to dependency are:
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.codingrodent:jackson-json-crypto:jar:2.2.0:compile
+    +-org.hibernate.validator:hibernate-validator:jar:6.1.7.Final:runtime
+      +-org.jboss.logging:jboss-logging:jar:3.3.2.Final:runtime
+and
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.codingrodent:jackson-json-crypto:jar:2.2.0:compile
+    +-org.hibernate.validator:hibernate-validator:jar:6.1.7.Final:runtime
+      +-org.jboss.logging:jboss-logging-processor:jar:2.1.0.Final:runtime
+        +-org.jboss.logging:jboss-logging:jar:3.1.2.GA:runtime
+and
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.codingrodent:jackson-json-crypto:jar:2.2.0:compile
+    +-org.hibernate.validator:hibernate-validator:jar:6.1.7.Final:runtime
+      +-org.jboss.logging:jboss-logging-annotations:jar:2.1.0.Final:runtime
+        +-org.jboss.logging:jboss-logging:jar:3.1.2.GA:runtime
+
+[WARNING]
+Dependency convergence error for com.fasterxml.jackson.core:jackson-databind:jar:2.13.2.2:compile paths to dependency are:
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.fasterxml.jackson.core:jackson-databind:jar:2.13.2.2:compile
+and
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.codingrodent:jackson-json-crypto:jar:2.2.0:compile
+    +-com.fasterxml.jackson.core:jackson-databind:jar:2.12.0:runtime
+
+[WARNING]
+Dependency convergence error for com.fasterxml.jackson.core:jackson-annotations:jar:2.13.2:compile paths to dependency are:
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.fasterxml.jackson.core:jackson-annotations:jar:2.13.2:compile
+and
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.fasterxml.jackson.core:jackson-databind:jar:2.13.2.2:compile
+    +-com.fasterxml.jackson.core:jackson-annotations:jar:2.13.2:compile
+and
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.codingrodent:jackson-json-crypto:jar:2.2.0:compile
+    +-com.fasterxml.jackson.core:jackson-annotations:jar:2.12.0:runtime
+
+[WARNING]
+Dependency convergence error for com.fasterxml.jackson.core:jackson-core:jar:2.13.2:compile paths to dependency are:
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.fasterxml.jackson.core:jackson-databind:jar:2.13.2.2:compile
+    +-com.fasterxml.jackson.core:jackson-core:jar:2.13.2:compile
+and
++-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
+  +-com.codingrodent:jackson-json-crypto:jar:2.2.0:compile
+    +-com.fasterxml.jackson.core:jackson-core:jar:2.12.0:runtime
+
+[WARNING] Rule 0: org.apache.maven.plugins.enforcer.DependencyConvergence failed with message:
+Failed while enforcing releasability. See above detailed error message.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.843 s
+[INFO] Finished at: 2022-04-23T21:31:19-04:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-enforcer-plugin:3.0.0:enforce (enforce) on project CouchbaseUI: Some Enforcer rules have failed.
+
+Look above for specific messages explaining why the rule failed. -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

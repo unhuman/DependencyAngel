@@ -6,18 +6,13 @@ import java.util.ArrayList;
 
 public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyDetails> {
     /**
-     * Indicate if there is an existing explicit dependency
-     * @return
+     * Adds an item if not a conflict.  If item is not added, we know this is a duplicate inclusion
+     * which should be transitive exclusion and an explicit (or some other existing) dependency
+     * should be ensured to cover this
+     *
+     * @param resolvedDependencyDetails element whose presence in this collection is to be ensured
+     * @return whether or not added
      */
-    public boolean hasExplicitDependency() {
-        for (ResolvedDependencyDetails resolvedDependencyDetails : this) {
-            if (resolvedDependencyDetails.isExplicitDependency()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Override
     public boolean add(ResolvedDependencyDetails resolvedDependencyDetails) {
         // don't allow adding a duplicate start / end item
@@ -30,6 +25,10 @@ public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyD
                     .equals(resolvedDependencyDetails.get(0).getGroup())
                 && currentItem.get(0).getArtifact()
                     .equals(resolvedDependencyDetails.get(0).getArtifact())) {
+
+                // We add this dependency to the existing item so that it knows it has multiple
+                currentItem.addAll(resolvedDependencyDetails);
+
                 return false;
             }
         }
@@ -49,6 +48,19 @@ public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyD
             }
         }
         return latestVersion;
+    }
+
+    /**
+     * Indicate if there is an existing explicit dependency
+     * @return
+     */
+    public boolean hasExplicitDependency() {
+        for (ResolvedDependencyDetails resolvedDependencyDetails : this) {
+            if (resolvedDependencyDetails.isExplicitDependency()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
