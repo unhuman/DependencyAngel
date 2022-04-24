@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 import static com.unhuman.dependencyangel.convergence.ConvergenceParser.CONVERGE_ERROR;
+import static java.lang.System.exit;
 
 public class DependencyAngel {
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
@@ -52,42 +53,11 @@ public class DependencyAngel {
         allowProcessing();
 
         // Open the pom file and remove any exclusions and forced transitive dependencies
-        try {
-            PomManipulator pomManipulator = new PomManipulator((pomFilePath));
-            pomManipulator.stripExclusions();
-            pomManipulator.stripForcedTransitiveDependencies();
-            pomManipulator.saveFile();
-            System.out.println("pom.xml file cleaned");
-        } catch (Exception e) {
-            throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
-        }
+        performCleanup(pomFilePath);
+
         if (config.isCleanOnly()) {
             return;
         }
-
-        // Run maven build - see if there are any dependency conflicts
-
-//        // run maven dependency:tree
-//        Path tempTgfFilePath = null;
-//        TgfData tgfData;
-//        try {
-//            tempTgfFilePath = Files.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
-//
-//            executeCommand(directoryFile, GENERATED_EXPECTED_FILE_LINE, MVN_COMMAND, "dependency:tree",
-//                    "-DoutputType=tgf", "-DoutputFile=" + tempTgfFilePath.toString());
-//            tgfData = TgfProcessor.process(tempTgfFilePath.toString());
-//        } catch (RuntimeException re) {
-//            throw re;
-//        } catch (Exception e) {
-//            throw new RuntimeException("Problem with dependency resolution", e);
-//        } finally {
-//            if (tempTgfFilePath != null) {
-//                new File(tempTgfFilePath.toString()).delete();
-//            }
-//        }
-//
-//        // parse out TGF Data
-//        DependencyNode root = DependencyHelper.convertTgfData(tgfData);
 
         // this processing may take multiple iterations if there are nested dependencies
         int itemsToProcess = -1;
@@ -197,6 +167,20 @@ public class DependencyAngel {
         // Happiness
     }
 
+    private void performCleanup(String pomFilePath) {
+        if (!config.isNoClean()) {
+            try {
+                PomManipulator pomManipulator = new PomManipulator(pomFilePath);
+                pomManipulator.stripExclusions();
+                pomManipulator.stripForcedTransitiveDependencies();
+                pomManipulator.saveFile();
+                System.out.println("pom.xml file cleaned");
+            } catch (Exception e) {
+                throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
+            }
+        }
+    }
+
     /**
      * Ensure that we can process this request / warn the user
      */
@@ -213,7 +197,7 @@ public class DependencyAngel {
                     }
 
                     if (value.matches("no?")) {
-                        System.exit(0);
+                        exit(0);
                     }
                 } catch (IOException e) { }
             }
@@ -279,54 +263,13 @@ public class DependencyAngel {
     }
 
     public static void main(String[] args) {
-        ArgumentParser parser = ArgumentParsers.newFor(DependencyAngel.class.getSimpleName()).build()
-                .defaultHelp(true)
-                .description("Resolve conflicting dependencies (exclusions).");
-        parser.addArgument("-c", "--cleanOnly")
-                .type(Boolean.class)
-                .required(false)
-                .setDefault(false)
-                .help("Perform clean up only");
-        parser.addArgument("-e", "--env")
-                .type(String.class)
-                .required(false)
-                .help("Specify environment variables (comma separated, k=v pairs");
-        parser.addArgument("-s", "--skipPrompts")
-                .type(Boolean.class)
-                .setDefault(false)
-                .help("Specify to skip any prompts");
-        parser.addArgument("directory")
-                .type(String.class)
-                .required(true)
-                .help("directory of project to modify");
-        Namespace ns = null;
         try {
-            ns = parser.parseArgs(args);
-        } catch (ArgumentParserException e) {
-            parser.handleError(e);
-            System.exit(1);
+            DependencyAngelConfig config = new DependencyAngelConfig(args);
+            DependencyAngel angel = new DependencyAngel(config);
+            angel.process();
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+            exit(-1);
         }
-
-        DependencyAngelConfig config = new DependencyAngelConfig(ns.getString("directory"));
-        config.addEnvironmentVars(getEnvParameterMap(ns.getString("env")));
-        config.setCleanOnly(ns.getBoolean("cleanOnly"));
-        config.setSkipPrompts(ns.getBoolean("skipPrompts"));
-
-        DependencyAngel angel = new DependencyAngel(config);
-        angel.process();
-    }
-
-    protected static Map<String, String> getEnvParameterMap(String env) {
-        Map<String, String> environmentVars = new HashMap<>();
-        if (env != null) {
-            for (String envItem: env.split(",")) {
-                String[] kv = envItem.split("=");
-                if (kv.length != 2) {
-                    throw new RuntimeException("Invalid environment (comma separated = split pairs): " + env);
-                }
-                environmentVars.put(kv[0], kv[1]);
-            }
-        }
-        return environmentVars;
     }
 }
