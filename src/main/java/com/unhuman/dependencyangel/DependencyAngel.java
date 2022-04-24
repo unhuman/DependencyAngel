@@ -59,29 +59,23 @@ public class DependencyAngel {
         }
 
         // this processing may take multiple iterations if there are nested dependencies
-        int itemsToProcess = -1;
         List<DependencyConflict> conflicts;
         int iteration = 0;
         do {
+            List<String> analyzeResults;
             try {
-                List<String> analyzeResults = executeCommand(directoryFile, CONVERGE_ERROR, MVN_COMMAND,
+                analyzeResults = executeCommand(directoryFile, CONVERGE_ERROR, MVN_COMMAND,
                         "dependency:analyze");
-
-                ConvergenceParser convergenceParser = ConvergenceParser.from(analyzeResults);
-                conflicts = new ArrayList<>(convergenceParser.getDependencyConflicts());
-                System.out.println(String.format("Iteration %d: %d conflicts remaining",
-                        ++iteration, conflicts.size()));
-
-                // Track if we are stuck - shouldn't happen, but let's be safe
-                if (conflicts.size() > 0 && itemsToProcess == conflicts.size()) {
-                    throw new RuntimeException("Problems determining changes - stuck in loop");
-                }
-                itemsToProcess = conflicts.size();
             } catch (RuntimeException re) {
                 throw re;
             } catch (Exception e) {
                 throw new RuntimeException("Problem with analyze", e);
             }
+
+            ConvergenceParser convergenceParser = ConvergenceParser.from(analyzeResults);
+            conflicts = new ArrayList<>(convergenceParser.getDependencyConflicts());
+            System.out.println(String.format("Iteration %d: %d conflicts remaining",
+                    ++iteration, conflicts.size()));
 
             List<ResolvedDependencyDetailsList> workList = calculatePomChanges(conflicts);
             updatePomFile(workList);
