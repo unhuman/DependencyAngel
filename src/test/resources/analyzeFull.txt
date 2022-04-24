@@ -13,7 +13,7 @@ Dependency convergence error for org.slf4j:slf4j-api:jar:1.7.2:runtime paths to 
   +-com.codingrodent:jackson-json-crypto:jar:2.2.0:compile
     +-org.hibernate.validator:hibernate-validator:jar:6.1.7.Final:runtime
       +-org.jboss.logging:jboss-logging:jar:3.3.2.Final:runtime
-        +-org.slf4j:slf4j-api:jar:1.7.2:runtime
+        +-org.slf4j:slf4j-api:3.2
 and
 +-com.unhuman:CouchbaseUI:jar:1.0.1-SNAPSHOT
   +-com.codingrodent:jackson-json-crypto:jar:2.2.0:compile

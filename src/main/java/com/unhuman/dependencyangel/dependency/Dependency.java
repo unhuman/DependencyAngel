@@ -11,17 +11,24 @@ public class Dependency {
 
     public Dependency(String data) {
         String[] details = data.split(":");
-        if (details.length < 4) {
-            throw new RuntimeException("Invalid Dependency Data: " + String.join(":", data));
-        }
 
-        int i = 0;
-        group = details[i++];
-        artifact = details[i++];
-        format = details[i++];
-        version = new Version(details[i++]);
-        if (details.length >= 5) {
-            scope = details[i++];
+        if (details.length == 3) {
+            int i = 0;
+            group = details[i++];
+            artifact = details[i++];
+            format = "jar";
+            version = new Version(details[i++]);
+        } else if (details.length < 4) {
+                throw new RuntimeException("Invalid Dependency Data: " + String.join(":", data));
+        } else {
+            int i = 0;
+            group = details[i++];
+            artifact = details[i++];
+            format = details[i++];
+            version = new Version(details[i++]);
+            if (details.length >= 5) {
+                scope = details[i++];
+            }
         }
     }
 
