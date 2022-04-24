@@ -23,7 +23,6 @@ public class ConvergenceParserTest {
         List<DependencyConflict> conflicts = parser.getDependencyConflicts();
         assertEquals(1, conflicts.size());
 
-
         DependencyConflict conflict = conflicts.get(0);
         assertEquals("org.jboss.logging", conflict.getGroup());
         assertEquals("jboss-logging", conflict.getArtifact());

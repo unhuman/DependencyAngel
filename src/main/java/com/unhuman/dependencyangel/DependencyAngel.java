@@ -3,10 +3,6 @@ package com.unhuman.dependencyangel;
 import com.unhuman.dependencyangel.convergence.*;
 import com.unhuman.dependencyangel.pom.PomManipulator;
 import com.unhuman.dependencyangel.versioning.Version;
-import net.sourceforge.argparse4j.ArgumentParsers;
-import net.sourceforge.argparse4j.inf.ArgumentParser;
-import net.sourceforge.argparse4j.inf.ArgumentParserException;
-import net.sourceforge.argparse4j.inf.Namespace;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.unhuman.dependencyangel.convergence.ConvergenceParser.CONVERGE_ERROR;
 import static java.lang.System.exit;
@@ -38,14 +35,16 @@ public class DependencyAngel {
         this.config = config;
     }
 
+    private String getPomFilePath() {
+        return config.getDirectory() + File.separator + "pom.xml";
+    }
     protected void process() {
         File directoryFile = new File(config.getDirectory()).getAbsoluteFile();
         if (!directoryFile.isDirectory()) {
-            throw new RuntimeException(String.format("Directory: %s is not a directory", config.getDirectory()));
+            throw new RuntimeException(String.format("%s is not a directory", config.getDirectory()));
         }
 
-        String pomFilePath = config.getDirectory() + File.separator + "pom.xml";
-        Path pomPath = Paths.get(pomFilePath);
+        Path pomPath = Paths.get(getPomFilePath());
         if (!Files.isRegularFile(pomPath)) {
             throw new RuntimeException(String.format("Directory: %s does not contain pom.xml", config.getDirectory()));
         }
@@ -53,7 +52,7 @@ public class DependencyAngel {
         allowProcessing();
 
         // Open the pom file and remove any exclusions and forced transitive dependencies
-        performCleanup(pomFilePath);
+        performPomCleanup();
 
         if (config.isCleanOnly()) {
             return;
@@ -69,7 +68,7 @@ public class DependencyAngel {
                         "dependency:analyze");
 
                 ConvergenceParser convergenceParser = ConvergenceParser.from(analyzeResults);
-                conflicts = convergenceParser.getDependencyConflicts();
+                conflicts = new ArrayList<>(convergenceParser.getDependencyConflicts());
                 System.out.println(String.format("Iteration %d: %d conflicts remaining",
                         ++iteration, conflicts.size()));
 
@@ -84,100 +83,112 @@ public class DependencyAngel {
                 throw new RuntimeException("Problem with analyze", e);
             }
 
-            conflicts = new ArrayList<>(conflicts);
-            List<DependencyConflict> handledDependencies = new ArrayList<>();
-
-            List<ResolvedDependencyDetailsList> workList = new ArrayList<>();
-            while (conflicts.size() > 0) {
-                DependencyConflict currentConflict = conflicts.remove(0);
-                handledDependencies.add(currentConflict);
-
-                System.out.println("Processing conflict: " + currentConflict.getDisplayName()
-                        + " to version: " + currentConflict.getVersion()
-                        + " with scope: " + currentConflict.getScope());
-
-                // Determine actions to be performed
-                ResolvedDependencyDetailsList workToDo = new ResolvedDependencyDetailsList();
-                for (DependencyConflictData data: currentConflict.getConflictHierarchy()) {
-                    workToDo.add(data.getEndDependencyInfo());
-                }
-                workList.add(workToDo);
-
-                // don't process further if the next dependency includes anything changed by this one
-                // that'd be handled in the next iteration
-                if (conflicts.size() > 0) {
-                    DependencyConflict nextConflict = conflicts.get(0);
-                    for (DependencyConflict handledDependency: handledDependencies) {
-                        if (nextConflict.containsDependency(handledDependency)) {
-                            // clear the handled dependencies for the next iteration
-                            handledDependencies.clear();
-                            break;
-                        }
-                    }
-                }
-
-                // nothing handled indicates we need another cycle
-                if (handledDependencies.size() == 0) {
-                    break;
-                }
-            }
-
-            // Update pom.xml
-            try {
-                PomManipulator pomManipulator = new PomManipulator((pomFilePath));
-
-                // Update dependencies
-                for (ResolvedDependencyDetailsList workItem: workList) {
-                    // Determine the required scope and version
-                    String explicitDependencyScope = (workItem.getResolvedScope() != null)
-                            ? workItem.getResolvedScope() : "compile";
-                    Version explicitVersion = (workItem.getLatestVersion());
-
-                    boolean needsExplicitDependency = true;
-                    for (ResolvedDependencyDetails workDependency: workItem) {
-                        if (workDependency.isExplicitDependency()) {
-                            needsExplicitDependency = false;
-                            // update the explicit dependency with version + scope
-                            pomManipulator.updateExplicitVersion(
-                                    workDependency.getInitialDependency().getGroup(),
-                                    workDependency.getInitialDependency().getArtifact(),
-                                    workItem.getLatestVersion(), explicitDependencyScope);
-                        }
-                        if (workDependency.needsExclusion(explicitVersion)) {
-                            // exclude the dependency
-                            pomManipulator.addExclusion(workDependency.getInitialDependency().getGroup(),
-                                    workDependency.getInitialDependency().getArtifact(),
-                                    workItem.getGroup(), workItem.getArtifact());
-                        }
-                        // else is scope satisfied here - if it was, we don't need explicit dependency
-                    }
-
-                    if (needsExplicitDependency) {
-                        pomManipulator.addForcedDependencyNode(workItem.getGroup(), workItem.getArtifact(),
-                                workItem.getLatestVersion(), explicitDependencyScope);
-                    }
-                }
-
-                pomManipulator.saveFile();
-            } catch (Exception e) {
-                throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
-            }
+            List<ResolvedDependencyDetailsList> workList = calculatePomChanges(conflicts);
+            updatePomFile(workList);
         } while (conflicts.size() > 0);
 
         // Happiness
     }
 
-    private void performCleanup(String pomFilePath) {
+    private void performPomCleanup() {
         if (!config.isNoClean()) {
             try {
-                PomManipulator pomManipulator = new PomManipulator(pomFilePath);
+                PomManipulator pomManipulator = new PomManipulator(getPomFilePath());
                 pomManipulator.stripExclusions();
                 pomManipulator.stripForcedTransitiveDependencies();
                 pomManipulator.saveFile();
                 System.out.println("pom.xml file cleaned");
             } catch (Exception e) {
-                throw new RuntimeException("Problem processing pom file: " + pomFilePath, e);
+                throw new RuntimeException("Problem processing pom file: " + getPomFilePath(), e);
             }
+        }
+    }
+
+    /**
+     * Calculate pom changes
+     *
+     * @param conflicts - usage is destructive and will be altered
+     * @return
+     */
+    private List<ResolvedDependencyDetailsList> calculatePomChanges(List<DependencyConflict> conflicts) {
+        // shallow copy the conflict locally so we can mutate the list
+        DependencyProcessState dependencyProcessState = new DependencyProcessState(conflicts);
+
+        List<ResolvedDependencyDetailsList> workList = new ArrayList<>();
+        while (dependencyProcessState.hasNext()) {
+            DependencyConflict currentConflict = dependencyProcessState.next();
+
+            System.out.println("Processing conflict: " + currentConflict.getDisplayName()
+                    + " to version: " + currentConflict.getVersion()
+                    + " with scope: " + currentConflict.getScope());
+
+            // Determine actions to be performed
+            ResolvedDependencyDetailsList workToDo = new ResolvedDependencyDetailsList();
+            for (DependencyConflictData data: currentConflict.getConflictHierarchy()) {
+                workToDo.add(data.getEndDependencyInfo());
+            }
+            workList.add(workToDo);
+
+            // don't process further if the next dependency includes anything changed by this one
+            // that'd be handled in the next iteration
+            if (dependencyProcessState.hasNext()) {
+                DependencyConflict nextConflict = dependencyProcessState.peekNext();
+
+                if (dependencyProcessState.hasHandledDependency(nextConflict)) {
+                    // clear any handled dependencies for the next iteration
+                    dependencyProcessState.resetHandledDependencies();
+                    break;
+                }
+            }
+
+            // nothing handled indicates we need another cycle
+            if (!dependencyProcessState.hasHandledDependencies()) {
+                break;
+            }
+        }
+        return workList;
+    }
+
+    private void updatePomFile(List<ResolvedDependencyDetailsList> workList) {
+        // Update pom.xml
+        try {
+            PomManipulator pomManipulator = new PomManipulator(getPomFilePath());
+
+            // Update dependencies
+            for (ResolvedDependencyDetailsList workItem: workList) {
+                // Determine the required scope and version
+                String explicitDependencyScope = (workItem.getResolvedScope() != null)
+                        ? workItem.getResolvedScope() : "compile";
+                Version explicitVersion = (workItem.getLatestVersion());
+
+                boolean needsExplicitDependency = true;
+                for (ResolvedDependencyDetails workDependency: workItem) {
+                    if (workDependency.isExplicitDependency()) {
+                        needsExplicitDependency = false;
+                        // update the explicit dependency with version + scope
+                        pomManipulator.updateExplicitVersion(
+                                workDependency.getInitialDependency().getGroup(),
+                                workDependency.getInitialDependency().getArtifact(),
+                                workItem.getLatestVersion(), explicitDependencyScope);
+                    }
+                    if (workDependency.needsExclusion(explicitVersion)) {
+                        // exclude the dependency
+                        pomManipulator.addExclusion(workDependency.getInitialDependency().getGroup(),
+                                workDependency.getInitialDependency().getArtifact(),
+                                workItem.getGroup(), workItem.getArtifact());
+                    }
+                    // else is scope satisfied here - if it was, we don't need explicit dependency
+                }
+
+                if (needsExplicitDependency) {
+                    pomManipulator.addForcedDependencyNode(workItem.getGroup(), workItem.getArtifact(),
+                            workItem.getLatestVersion(), explicitDependencyScope);
+                }
+            }
+
+            pomManipulator.saveFile();
+        } catch (Exception e) {
+            throw new RuntimeException("Problem processing pom file: " + getPomFilePath(), e);
         }
     }
 
@@ -212,6 +223,7 @@ public class DependencyAngel {
      * @return list of data in the input
      */
     protected List<String> executeCommand(File directoryFile, Pattern errorMatchForSuccess, String... commandAndParams) {
+        System.out.println("Executing: " + Arrays.stream(commandAndParams).collect(Collectors.joining(" ")));
         List<String> output = new ArrayList<>(100);
         try {
             ProcessBuilder builder = new ProcessBuilder(commandAndParams);
@@ -270,6 +282,58 @@ public class DependencyAngel {
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             exit(-1);
+        }
+    }
+
+    /**
+     * Internal state for how we process dependencies
+     * This is destructive
+     */
+    class DependencyProcessState implements Iterator<DependencyConflict> {
+        List<DependencyConflict> conflicts;
+        List<DependencyConflict> handledDependencies;
+
+        /**
+         * Manipulation of conflicts is destructive
+         * @param conflicts
+         */
+        DependencyProcessState(List conflicts) {
+            this.conflicts = conflicts;
+            handledDependencies = new ArrayList<>();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return (conflicts.size() > 0);
+        }
+
+        @Override
+        public DependencyConflict next() {
+            DependencyConflict conflict = conflicts.remove(0);
+            handledDependencies.add(conflict);
+            return conflict;
+        }
+
+        public DependencyConflict peekNext() {
+            return conflicts.get(0);
+        }
+
+
+            public boolean hasHandledDependency(DependencyConflict check) {
+            for (DependencyConflict handledDependency: handledDependencies) {
+                if (check.containsDependency(handledDependency)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public boolean hasHandledDependencies() {
+            return (handledDependencies.size() > 0);
+        }
+
+        public void resetHandledDependencies() {
+            handledDependencies.clear();
         }
     }
 }
