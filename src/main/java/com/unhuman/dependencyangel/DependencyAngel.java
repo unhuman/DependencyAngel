@@ -241,7 +241,7 @@ public class DependencyAngel {
             // If there was an error exit value, search to see if we should treat it as success
             if (errorMatchForSuccess != null) {
                 // output any errors we got
-                while ((line = errorReader.readLine()) != null) {
+                while (errorReader.ready() && (line = errorReader.readLine()) != null) {
                     System.err.println(line);
                 }
 
@@ -282,6 +282,7 @@ public class DependencyAngel {
             angel.process();
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
+            e.printStackTrace(System.err);
             exit(-1);
         }
     }

@@ -54,7 +54,7 @@ public class DependencyAngelConfig {
             directory = ns.getString("directory");
             environmentVars.putAll(getEnvParameterMap(ns.getString("env")));
             // Add JAVA_HOME if it doesn't exist in the environment
-            if (!environmentVars.containsKey("JAVA_HOME")) {
+            if (!environmentVars.containsKey("JAVA_HOME") && System.getenv("JAVA_HOME") != null) {
                 environmentVars.put("JAVA_HOME", System.getenv("JAVA_HOME"));
             }
             cleanOnly = ns.getBoolean("cleanOnly");
