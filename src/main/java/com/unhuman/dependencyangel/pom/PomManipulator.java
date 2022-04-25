@@ -66,7 +66,7 @@ public class PomManipulator {
             throw new RuntimeException("Could not find project node");
         }
         // determine indentations
-        Node propertiesNode = findDesiredNode(document.getElementsByTagName(PROPERTIES_TAG), projectNode, projectNode);
+        propertiesNode = findDesiredNode(document.getElementsByTagName(PROPERTIES_TAG), projectNode, projectNode);
         Node dependencyManagementList = findDesiredNode(
                 document.getElementsByTagName(DEPENDENCY_MANAGEMENT_TAG), projectNode, projectNode);
         dependenciesNode = findDesiredNode(document.getElementsByTagName(DEPENDENCIES_TAG),
