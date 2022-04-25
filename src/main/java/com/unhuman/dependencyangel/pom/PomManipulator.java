@@ -219,11 +219,14 @@ public class PomManipulator {
                         NodeList versionElements = document.getElementsByTagName(key);
                         if (versionElements.getLength() == 1) {
                             versionElements.item(0).setTextContent(version.toString());
+                        } else {
+                            throw new RuntimeException("Couldn't find property: " + key);
                         }
                     } else {
                         versionNode.setTextContent(version.toString());
                     }
                 }
+
                 // TODO: Handle missing version
 
                 Node scopeNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, SCOPE_TAG);
@@ -283,7 +286,11 @@ public class PomManipulator {
     }
 
     public void stripForcedTransitiveDependencies() {
-        NodeList dependencies = dependenciesNode.getChildNodes();
+        stripForcedTransitiveDependencies(propertiesNode);
+        stripForcedTransitiveDependencies(dependenciesNode);
+    }
+    protected void stripForcedTransitiveDependencies(Node parentNode) {
+        NodeList dependencies = parentNode.getChildNodes();
         boolean deleting = false;
 
         for (int i = 0; i < dependencies.getLength(); i++) {
@@ -367,7 +374,13 @@ public class PomManipulator {
             Node versionProperty = document.createElement(key);
             versionProperty.setTextContent(version);
             addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
+            addLastChild(propertiesNode, document.createComment(COMMENT_ADD_DEPENDENCY_START),
+                    propertiesIndent);
+            addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
             addLastChild(propertiesNode, versionProperty, propertiesIndent);
+            addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
+            addLastChild(propertiesNode, document.createComment(COMMENT_ADD_DEPENDENCY_END),
+                    propertiesIndent);
         }
         return String.format("${%s}", key);
     }
