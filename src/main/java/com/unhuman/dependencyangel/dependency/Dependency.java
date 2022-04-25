@@ -16,7 +16,7 @@ public class Dependency {
             int i = 0;
             group = details[i++];
             artifact = details[i++];
-            format = "jar";
+            format = null;
             version = new Version(details[i++]);
         } else if (details.length < 4) {
                 throw new RuntimeException("Invalid Dependency Data: " + String.join(":", data));
@@ -38,6 +38,20 @@ public class Dependency {
         this.format = dependency.getFormat();
         this.version = dependency.getVersion();
         this.scope = dependency.getScope();
+    }
+
+    public Dependency(String groupId, String artifactId, String format, Version version, String scope) {
+        if (groupId == null || groupId.isBlank()) {
+            throw new RuntimeException("Missing dependency groupId");
+        }
+        if (artifactId == null || artifactId.isBlank()) {
+            throw new RuntimeException("Missing dependency artifactId");
+        }
+        this.group = groupId;
+        this.artifact = artifactId;
+        this.format = format;
+        this.version = version;
+        this.scope = scope;
     }
 
     public String getGroup() {

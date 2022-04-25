@@ -4,20 +4,15 @@ import com.unhuman.dependencyangel.versioning.Version;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -25,74 +20,82 @@ import java.util.regex.Pattern;
 
 public class PomManipulator {
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\r?\\n\\s+");
-    private static final Pattern PROPERTIES_VERSION = Pattern.compile("$\\{(.*)\\}");
+    public static final Pattern PROPERTIES_VERSION = Pattern.compile("\\$\\{(.*)\\}");
     private static final String COMMENT_DEPENDENCY_ANGEL_START = "DependencyAngel Start";
     private static final String COMMENT_DEPENDENCY_ANGEL_END = "DependencyAngel End";
     private static final String PROPERTIES_TAG = "properties";
-    private static final String DEPENDENCY_MANAGEMENT_TAG = "dependencyManagement";
-    private static final String DEPENDENCIES_TAG = "dependencies";
-    private static final String DEPENDENCY_TAG = "dependency";
-    private static final String GROUP_ID_TAG = "groupId";
-    private static final String ARTIFACT_ID_TAG = "artifactId";
-    private static final String VERSION_TAG = "version";
-    private static final String SCOPE_TAG = "scope";
+    public static final String DEPENDENCY_MANAGEMENT_TAG = "dependencyManagement";
+    public static final String DEPENDENCIES_TAG = "dependencies";
+    public static final String DEPENDENCY_TAG = "dependency";
+    public static final String GROUP_ID_TAG = "groupId";
+    public static final String ARTIFACT_ID_TAG = "artifactId";
+    public static final String VERSION_TAG = "version";
+    public static final String SCOPE_TAG = "scope";
     private static final String EXCLUSIONS_TAG = "exclusions";
     private static final String EXCLUSION_TAG = "exclusion";
 
     private String filename;
     private Document document;
+    private Node dependencyManagementNode;
     private Node dependenciesNode;
     private Node propertiesNode;
 
-    private boolean changed;
+    private boolean dirty;
 
     private String dependenciesIndentation;
     private String dependencyIndentation;
     private String nestedIndentation = "    ";
     private String dependencyContentIndentation;
 
-    public PomManipulator(String filename) throws ParserConfigurationException, IOException, SAXException {
-        this.filename = filename;
-        changed = false;
+    public PomManipulator(String filename) {
+        try {
+            this.filename = filename;
+            dirty = false;
 
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        document = builder.parse(new File(filename));
-        document.getDocumentElement().normalize();
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            document = builder.parse(new File(filename));
+            document.getDocumentElement().normalize();
 
-        Node projectNode = document.getFirstChild();
-        if (!projectNode.getNodeName().equals("project")) {
-            throw new RuntimeException("Could not find project node");
-        }
-        // determine indentations
-        propertiesNode = findDesiredNode(document.getElementsByTagName(PROPERTIES_TAG), projectNode, projectNode);
-        Node dependencyManagementList = findDesiredNode(
-                document.getElementsByTagName(DEPENDENCY_MANAGEMENT_TAG), projectNode, projectNode);
-        dependenciesNode = findDesiredNode(document.getElementsByTagName(DEPENDENCIES_TAG),
-                dependencyManagementList, projectNode);
-
-        if (dependenciesNode != null) {
-            dependenciesIndentation = findNodeIndentation(dependenciesNode);
-
-            // Find indentations we need to use for child nodes
-            List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
-            Node groupIdNode = null;
-            if (dependencyNodes.size() > 0) {
-                Node dependencyNode = dependencyNodes.get(0);
-                if (dependencyIndentation == null) {
-                    dependencyIndentation = findNodeIndentation(dependencyNode);
-                }
-                groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
+            Node projectNode = document.getFirstChild();
+            if (!projectNode.getNodeName().equals("project")) {
+                throw new RuntimeException("Could not find project node");
             }
-            if (groupIdNode != null) {
-                if (dependencyContentIndentation == null) {
-                    dependencyContentIndentation = findNodeIndentation(groupIdNode);
-                    if (dependencyContentIndentation.length() > dependencyIndentation.length()) {
-                        nestedIndentation = dependencyContentIndentation.substring(dependencyIndentation.length());
+            // determine indentations
+            propertiesNode = findDesiredNode(document.getElementsByTagName(PROPERTIES_TAG), projectNode, projectNode);
+            dependencyManagementNode = findSingleElement(DEPENDENCY_MANAGEMENT_TAG, false);
+            dependenciesNode = findDesiredNode(document.getElementsByTagName(DEPENDENCIES_TAG),
+                    dependencyManagementNode, projectNode);
+
+            if (dependenciesNode != null) {
+                dependenciesIndentation = findNodeIndentation(dependenciesNode);
+
+                // Find indentations we need to use for child nodes
+                List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+                Node groupIdNode = null;
+                if (dependencyNodes.size() > 0) {
+                    Node dependencyNode = dependencyNodes.get(0);
+                    if (dependencyIndentation == null) {
+                        dependencyIndentation = findNodeIndentation(dependencyNode);
+                    }
+                    groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
+                }
+                if (groupIdNode != null) {
+                    if (dependencyContentIndentation == null) {
+                        dependencyContentIndentation = findNodeIndentation(groupIdNode);
+                        if (dependencyContentIndentation.length() > dependencyIndentation.length()) {
+                            nestedIndentation = dependencyContentIndentation.substring(dependencyIndentation.length());
+                        }
                     }
                 }
             }
+        } catch (Exception e) {
+            throw new RuntimeException("Problem processing pom file: " + filename, e);
         }
+    }
+
+    public boolean hasDependencyManagement() {
+        return (dependencyManagementNode != null);
     }
 
     Node findDesiredNode(NodeList nodeList, Node preferredParent, Node acceptableParent) {
@@ -108,7 +111,7 @@ public class PomManipulator {
         return acceptableNode;
     }
 
-    List<Node> findChildNodes(Node parentNode, short nodeType, String nodeName) {
+    public List<Node> findChildNodes(Node parentNode, short nodeType, String nodeName) {
         List<Node> nodes = new ArrayList<>();
         NodeList childNodeList = parentNode.getChildNodes();
         for (int i = 0; i < childNodeList.getLength(); i++) {
@@ -133,6 +136,38 @@ public class PomManipulator {
         }
     }
 
+    public Node findSingleElement(String elementName, boolean required) {
+        NodeList nodeList = document.getElementsByTagName(elementName);
+        switch (nodeList.getLength()) {
+            case 0:
+                if (required) {
+                    throw new RuntimeException("Could not find expected element: " + elementName);
+                }
+                return null;
+            case 1:
+                return nodeList.item(0);
+            default:
+                throw new RuntimeException(String.format("Found too many (%d) elements: %s",
+                        nodeList.getLength(), elementName));
+        }
+    }
+
+    public Node getSingleNodeElement(Node parentNode, String itemDesired, boolean required) {
+        List<Node> foundNodes = findChildNodes(parentNode, Node.ELEMENT_NODE, itemDesired);
+        if (foundNodes.size() == 0) {
+            if (required) {
+                throw new RuntimeException("Could not find expected required element: " + itemDesired);
+            }
+            return null;
+        }
+        if (foundNodes.size() > 1) {
+            throw new RuntimeException(
+                    String.format("Found too many (%d) element: %s", foundNodes.size(), itemDesired));
+        }
+
+        return foundNodes.get(0);
+    }
+
     String findNodeIndentation(Node node) {
         Node indentationNode = node.getPreviousSibling();
         if (Node.TEXT_NODE == indentationNode.getNodeType() && indentationNode.getTextContent().isBlank()) {
@@ -143,7 +178,7 @@ public class PomManipulator {
 
     public void addExclusion(String parentGroupId, String parentArtifactId,
                              String exclusionGroupId, String exclusionArtifactId) {
-        changed = true;
+        dirty = true;
 
         List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
         for (Node dependencyNode: dependencyNodes) {
@@ -185,7 +220,7 @@ public class PomManipulator {
     }
 
     protected void addLastChild(Node parentNode, Node addNode, String parentNodeIndentation) {
-        changed = true;
+        dirty = true;
 
         Node lastChild = parentNode.getLastChild();
         Node appendPoint = (lastChild != null
@@ -203,9 +238,9 @@ public class PomManipulator {
         }
     }
 
-    public void updateExplicitVersion(String groupId, String artifactId, Version version, String scope) {
-        changed = true;
+    public boolean updateExplicitVersion(String groupId, String artifactId, Version version, String scope) {
         List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+        boolean modified = false;
         for (Node dependencyNode: dependencyNodes) {
             Node groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
             Node artifactIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, ARTIFACT_ID_TAG);
@@ -214,6 +249,7 @@ public class PomManipulator {
                     && artifactId.equals(artifactIdNode.getTextContent())) {
                 Node versionNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, VERSION_TAG);
                 if (versionNode != null) {
+                    modified = true;
                     String priorVersion = versionNode.getTextContent();
                     Matcher matcher = PROPERTIES_VERSION.matcher(priorVersion);
                     if (matcher.matches()) {
@@ -229,57 +265,87 @@ public class PomManipulator {
                     }
                 }
 
-                // TODO: Handle missing version
+                // TODO: Handle missing version - shouldn't be an issue
 
                 Node scopeNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, SCOPE_TAG);
                 if (scopeNode != null) {
-                    scopeNode.setTextContent(scope);
+                    modified = true;
+                    if (scope != null) {
+                        scopeNode.setTextContent(scope);
+                    } else {
+                        // delete the scope
+                        deleteNode(scopeNode, true);
+                    }
                 }
-                // if scope doesn't exist, that's fine - default is "compile"
             }
         }
+        dirty = (modified) ? modified : dirty;
+        return modified;
+    }
 
+    public Node getDependencesNode() {
+        return dependenciesNode;
+    }
+
+    public void addDependencyNode(String groupId, String artifactId, Version version, String scope) {
+        dirty = true;
+        addDependencyNode(groupId, artifactId, version, scope, false);
     }
 
     public void addForcedDependencyNode(String groupId, String artifactId, Version version, String scope) {
-        changed = true;
+        dirty = true;
 
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation),
                 dependencyIndentation);
         addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START),
                 dependencyIndentation);
 
+        addDependencyNode(groupId, artifactId, version, scope, true);
+
+        addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
+        addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END), dependenciesIndentation);
+    }
+
+    private void addDependencyNode(String groupId, String artifactId, Version version, String scope,
+                                   boolean needAngelComment) {
+        dirty = true;
+
+        Node newDependency = createDependencyNode(groupId, artifactId, version, scope, dependencyIndentation,
+                needAngelComment);
+        addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
+        addLastChild(dependenciesNode, newDependency, dependenciesIndentation);
+    }
+
+    private Node createDependencyNode(String groupId, String artifactId, Version version, String scope,
+                                      String indentation, boolean needAngelComment) {
         Node newDependency = document.createElement(DEPENDENCY_TAG);
 
-        newDependency.appendChild(document.createTextNode(dependencyContentIndentation));
+        String contentIndentation = indentation + nestedIndentation;
+
+        newDependency.appendChild(document.createTextNode(contentIndentation));
         Node groupIdNode = document.createElement(GROUP_ID_TAG);
         groupIdNode.setTextContent(groupId);
         newDependency.appendChild(groupIdNode);
 
-        newDependency.appendChild(document.createTextNode(dependencyContentIndentation));
+        newDependency.appendChild(document.createTextNode(contentIndentation));
         Node artifactNode = document.createElement(ARTIFACT_ID_TAG);
         artifactNode.setTextContent(artifactId);
         newDependency.appendChild(artifactNode);
 
-        newDependency.appendChild(document.createTextNode(dependencyContentIndentation));
+        newDependency.appendChild(document.createTextNode(contentIndentation));
         Node versionNode = document.createElement(VERSION_TAG);
-        String versionInfo = storeVersionInProperties(groupId, artifactId, version.toString());
+        String versionInfo = storeVersionInProperties(groupId, artifactId, version.toString(), needAngelComment);
         versionNode.setTextContent(versionInfo);
         newDependency.appendChild(versionNode);
 
-        newDependency.appendChild(document.createTextNode(dependencyContentIndentation));
+        newDependency.appendChild(document.createTextNode(contentIndentation));
         Node scopeNode = document.createElement(SCOPE_TAG);
         scopeNode.setTextContent(scope);
         newDependency.appendChild(scopeNode);
 
         // add an indentation to the end of the last element so the closing element looks correct
-        newDependency.appendChild(document.createTextNode(dependencyIndentation));
-
-        addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
-        addLastChild(dependenciesNode, newDependency, dependenciesIndentation);
-
-        addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
-        addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END), dependenciesIndentation);
+        newDependency.appendChild(document.createTextNode(indentation));
+        return newDependency;
     }
 
     public void stripExclusions() {
@@ -341,11 +407,16 @@ public class PomManipulator {
             if (validateParentNodeName == null ||
                     exclusionNodes.item(i).getParentNode().getNodeName().equals(validateParentNodeName)) {
                 deleteNode(exclusionNodes.item(i), true);
-                changed = true;
+                dirty = true;
             }
         }
     }
-    protected void deleteNode(Node deleteNode, boolean cleanPriorWhitespace) {
+
+    public void deleteNode(Node deleteNode, boolean cleanPriorWhitespace) {
+        if (deleteNode == null) {
+            return;
+        }
+
         // clean up any indentation
         if (cleanPriorWhitespace) {
             Node indentationNode = deleteNode.getPreviousSibling();
@@ -358,19 +429,25 @@ public class PomManipulator {
         // delete the desired node
         deleteNode.getParentNode().removeChild(deleteNode);
 
-        changed = true;
+        dirty = true;
     }
 
     /**
      * Stores the version in properties and returns an id - or the version
      * @param version
      */
-    protected String storeVersionInProperties(String groupId, String artifactId, String version) {
+    protected String storeVersionInProperties(String groupId, String artifactId, String version,
+                                              boolean needAngelComment) {
         if (propertiesNode == null) {
             return version;
         }
 
-        changed = true;
+        // If the value we are receiving here is a property, then we will assume it's already defined
+        if (PROPERTIES_VERSION.matcher(version).matches()) {
+            return version;
+        }
+
+        dirty = true;
 
         String propertiesIndent = findNodeIndentation(propertiesNode);
         String versionIndent = propertiesIndent + nestedIndentation;
@@ -383,29 +460,37 @@ public class PomManipulator {
         } else {
             Node versionProperty = document.createElement(key);
             versionProperty.setTextContent(version);
-            addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
-            addLastChild(propertiesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START),
-                    propertiesIndent);
+            if (needAngelComment) {
+                addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
+                addLastChild(propertiesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START),
+                        propertiesIndent);
+            }
             addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
             addLastChild(propertiesNode, versionProperty, propertiesIndent);
-            addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
-            addLastChild(propertiesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END),
-                    propertiesIndent);
+            if (needAngelComment) {
+                addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
+                addLastChild(propertiesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END),
+                        propertiesIndent);
+            }
         }
         return String.format("${%s}", key);
     }
-    public void saveFile() throws TransformerException, FileNotFoundException {
+    public void saveFile() {
         // only save if something changed
-        if (!changed) {
+        if (!dirty) {
             return;
         }
 
-        FileOutputStream output = new FileOutputStream(filename);
-        TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        Transformer transformer = transformerFactory.newTransformer();
-        DOMSource source = new DOMSource(document);
-        StreamResult result = new StreamResult(output);
+        try {
+            FileOutputStream output = new FileOutputStream(filename);
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            DOMSource source = new DOMSource(document);
+            StreamResult result = new StreamResult(output);
 
-        transformer.transform(source, result);
+            transformer.transform(source, result);
+        } catch (Exception e) {
+            throw new RuntimeException("Problem saving: " + filename, e);
+        }
     }
 }

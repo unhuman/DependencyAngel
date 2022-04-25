@@ -1,11 +1,14 @@
 package com.unhuman.dependencyangel;
 
+import com.unhuman.dependencyangel.dependency.Dependency;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class DependencyAngelConfig {
@@ -13,6 +16,7 @@ public class DependencyAngelConfig {
 
     private String directory;
     private Map<String, String> environmentVars;
+    private List<Dependency> bannedDependencies;
     private boolean skipPrompts;
     private boolean cleanOnly;
     private boolean noClean;
@@ -25,11 +29,16 @@ public class DependencyAngelConfig {
         this.cleanOnly = false;
         this.noClean = false;
         this.mode = Mode.Process;
+        this.bannedDependencies = new ArrayList<>();
 
         ArgumentParser parser = ArgumentParsers.newFor(DependencyAngel.class.getSimpleName()).build()
                 .defaultHelp(true)
                 .description("Resolve conflicting dependencies (exclusions).  " +
                         "This is a destructive process.  Have backups!");
+        parser.addArgument("-b", "--banned")
+                .type(String.class)
+                .required(false)
+                .help("List of banned dependencies (artifactId:groupId).  Processing preserves exclusions.");
         parser.addArgument("-c", "--cleanOnly")
                 .type(Boolean.class)
                 .required(false)
@@ -71,6 +80,20 @@ public class DependencyAngelConfig {
             skipPrompts = ns.getBoolean("skipPrompts");
             noClean = ns.getBoolean("noClean");
             mode = ns.get("mode");
+
+            String banned = ns.getString("banned");
+            if (banned != null) {
+                try {
+                    String[] bannedItems = banned.split("[,]+");
+                    for (String bannedItem : bannedItems) {
+                        String[] parts = bannedItem.split(":");
+                        Dependency dependency = new Dependency(parts[0], parts[1], null, null, null);
+                        bannedDependencies.add(dependency);
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException("Invalid bannedDependencies: " + banned);
+                }
+            }
         } catch (ArgumentParserException e) {
             parser.handleError(e);
             System.exit(1);
@@ -104,6 +127,10 @@ public class DependencyAngelConfig {
 
     public Mode getMode() {
         return mode;
+    }
+
+    public List<Dependency> getBannedDependencies() {
+        return bannedDependencies;
     }
 
     protected static Map<String, String> getEnvParameterMap(String env) {
