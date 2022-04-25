@@ -26,6 +26,8 @@ import java.util.regex.Pattern;
 public class PomManipulator {
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\r?\\n\\s+");
     private static final Pattern PROPERTIES_VERSION = Pattern.compile("$\\{(.*)\\}");
+    private static final String COMMENT_DEPENDENCY_ANGEL_START = "DependencyAngel Start";
+    private static final String COMMENT_DEPENDENCY_ANGEL_END = "DependencyAngel End";
     private static final String PROPERTIES_TAG = "properties";
     private static final String DEPENDENCY_MANAGEMENT_TAG = "dependencyManagement";
     private static final String DEPENDENCIES_TAG = "dependencies";
@@ -37,12 +39,7 @@ public class PomManipulator {
     private static final String EXCLUSIONS_TAG = "exclusions";
     private static final String EXCLUSION_TAG = "exclusion";
 
-    private static final String NEW_LINE = "\n";
-
-    private static final String COMMENT_ADD_DEPENDENCY_START = "Forced Dependency Start";
-    private static final String COMMENT_ADD_DEPENDENCY_END = "Forced Dependency End";
     private String filename;
-
     private Document document;
     private Node dependenciesNode;
     private Node propertiesNode;
@@ -147,7 +144,7 @@ public class PomManipulator {
     public void addExclusion(String parentGroupId, String parentArtifactId,
                              String exclusionGroupId, String exclusionArtifactId) {
         changed = true;
-        
+
         List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
         for (Node dependencyNode: dependencyNodes) {
             Node groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
@@ -249,7 +246,7 @@ public class PomManipulator {
 
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation),
                 dependencyIndentation);
-        addLastChild(dependenciesNode, document.createComment(COMMENT_ADD_DEPENDENCY_START),
+        addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START),
                 dependencyIndentation);
 
         Node newDependency = document.createElement(DEPENDENCY_TAG);
@@ -282,7 +279,7 @@ public class PomManipulator {
         addLastChild(dependenciesNode, newDependency, dependenciesIndentation);
 
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
-        addLastChild(dependenciesNode, document.createComment(COMMENT_ADD_DEPENDENCY_END), dependenciesIndentation);
+        addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END), dependenciesIndentation);
     }
 
     public void stripExclusions() {
@@ -308,13 +305,13 @@ public class PomManipulator {
 
             while (node != null) {
                 if (Node.COMMENT_NODE == node.getNodeType()) {
-                    if (COMMENT_ADD_DEPENDENCY_START.equals(node.getTextContent().trim())) {
+                    if (COMMENT_DEPENDENCY_ANGEL_START.equals(node.getTextContent().trim())) {
                         if (deleting) {
                             throw new RuntimeException("Invalid Forced Dependency Start comment tag");
                         }
                         // this will be deleted below
                         deleting = true;
-                    } else if (COMMENT_ADD_DEPENDENCY_END.equals(node.getTextContent().trim())) {
+                    } else if (COMMENT_DEPENDENCY_ANGEL_END.equals(node.getTextContent().trim())) {
                         if (!deleting) {
                             throw new RuntimeException("Invalid Forced Dependency End comment tag");
                         }
@@ -387,12 +384,12 @@ public class PomManipulator {
             Node versionProperty = document.createElement(key);
             versionProperty.setTextContent(version);
             addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
-            addLastChild(propertiesNode, document.createComment(COMMENT_ADD_DEPENDENCY_START),
+            addLastChild(propertiesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START),
                     propertiesIndent);
             addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
             addLastChild(propertiesNode, versionProperty, propertiesIndent);
             addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
-            addLastChild(propertiesNode, document.createComment(COMMENT_ADD_DEPENDENCY_END),
+            addLastChild(propertiesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END),
                     propertiesIndent);
         }
         return String.format("${%s}", key);
