@@ -14,13 +14,18 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
 public class PomManipulator {
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\r?\\n\\s+");
+    private static final String PROPERTIES_TAG = "properties";
+    private static final String DEPENDENCY_MANAGEMENT_TAG = "dependencyManagement";
     private static final String DEPENDENCIES_TAG = "dependencies";
     private static final String DEPENDENCY_TAG = "dependency";
     private static final String GROUP_ID_TAG = "groupId";
@@ -38,6 +43,7 @@ public class PomManipulator {
 
     private Document document;
     private Node dependenciesNode;
+    private Node propertiesNode;
 
     private boolean changed;
 
@@ -55,12 +61,17 @@ public class PomManipulator {
         document = builder.parse(new File(filename));
         document.getDocumentElement().normalize();
 
-        // determine indentations
-        NodeList dependenciesNodes = document.getElementsByTagName(DEPENDENCIES_TAG);
-        if (dependenciesNodes.getLength() != 1) {
-            throw new RuntimeException("Expected a single <dependencies> element");
+        Node projectNode = document.getFirstChild();
+        if (!projectNode.getNodeName().equals("project")) {
+            throw new RuntimeException("Could not find project node");
         }
-        dependenciesNode = dependenciesNodes.item(0);
+        // determine indentations
+        Node propertiesNode = findDesiredNode(document.getElementsByTagName(PROPERTIES_TAG), projectNode, projectNode);
+        Node dependencyManagementList = findDesiredNode(
+                document.getElementsByTagName(DEPENDENCY_MANAGEMENT_TAG), projectNode, projectNode);
+        dependenciesNode = findDesiredNode(document.getElementsByTagName(DEPENDENCIES_TAG),
+                dependencyManagementList, projectNode);
+
         dependenciesIndentation = findNodeIndentation(dependenciesNode);
 
         // Find indentations we need to use for child nodes
@@ -81,6 +92,19 @@ public class PomManipulator {
                 }
             }
         }
+    }
+
+    Node findDesiredNode(NodeList nodeList, Node preferredParent, Node acceptableParent) {
+        Node acceptableNode = null;
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            if (preferredParent != null && nodeList.item(i).getParentNode() == preferredParent) {
+                return nodeList.item(i);
+            }
+            if (nodeList.item(i).getParentNode() == acceptableParent) {
+                acceptableNode = nodeList.item(i);
+            }
+        }
+        return acceptableNode;
     }
 
     List<Node> findChildNodes(Node parentNode, short nodeType, String nodeName) {
@@ -232,7 +256,8 @@ public class PomManipulator {
     }
 
     public void stripExclusions() {
-        stripNodes(EXCLUSIONS_TAG);
+        // only strip exclusions whose parent node is a dependency
+        stripNodes(EXCLUSIONS_TAG, DEPENDENCY_TAG);
     }
 
     public void stripForcedTransitiveDependencies() {
@@ -274,10 +299,13 @@ public class PomManipulator {
         }
     }
 
-    protected void stripNodes(String nodeId) {
+    protected void stripNodes(String nodeId, String validateParentNodeName) {
         NodeList exclusionNodes = document.getElementsByTagName(nodeId);
         for (int i = 0; i < exclusionNodes.getLength(); i++) {
-            deleteNode(exclusionNodes.item(i), true);
+            if (validateParentNodeName == null ||
+                    exclusionNodes.item(i).getParentNode().getNodeName().equals(validateParentNodeName)) {
+                deleteNode(exclusionNodes.item(i), true);
+            }
         }
     }
 

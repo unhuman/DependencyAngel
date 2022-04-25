@@ -234,6 +234,12 @@ public class DependencyAngel {
 
             // If there was an error exit value, search to see if we should treat it as success
             if (errorMatchForSuccess != null) {
+                // output any errors we got
+                while ((line = errorReader.readLine()) != null) {
+                    System.err.println(line);
+                }
+
+                // Process the data we had, too
                 while ((line = outputReader.readLine()) != null) {
                     if (!foundDesiredValue && errorMatchForSuccess.matcher(line).find()) {
                         System.out.println("Found desired line: " + errorMatchForSuccess);
@@ -247,14 +253,9 @@ public class DependencyAngel {
                 }
             }
 
-            // output any errors we got
-            while ((line = errorReader.readLine()) != null) {
-                System.err.println(line);
-            }
+            int processResult = process.waitFor();
 
-            int processResult =  process.waitFor();
-
-            if (processResult !=0 && !foundDesiredValue) {
+            if (processResult != 0 && !foundDesiredValue) {
                 throw new RuntimeException(String.format("Process: %s failed with status code %d",
                         Arrays.stream(commandAndParams).toArray().toString(), processResult));
             }
@@ -313,7 +314,7 @@ public class DependencyAngel {
         }
 
 
-            public boolean hasHandledDependency(DependencyConflict check) {
+        public boolean hasHandledDependency(DependencyConflict check) {
             for (DependencyConflict handledDependency: handledDependencies) {
                 if (check.containsDependency(handledDependency)) {
                     return true;
