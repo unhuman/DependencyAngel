@@ -147,6 +147,7 @@ public class PomManipulator {
     public void addExclusion(String parentGroupId, String parentArtifactId,
                              String exclusionGroupId, String exclusionArtifactId) {
         changed = true;
+        
         List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
         for (Node dependencyNode: dependencyNodes) {
             Node groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
@@ -187,6 +188,8 @@ public class PomManipulator {
     }
 
     protected void addLastChild(Node parentNode, Node addNode, String parentNodeIndentation) {
+        changed = true;
+
         Node lastChild = parentNode.getLastChild();
         Node appendPoint = (lastChild != null
                 && lastChild.getNodeType() == Node.TEXT_NODE
@@ -341,6 +344,7 @@ public class PomManipulator {
             if (validateParentNodeName == null ||
                     exclusionNodes.item(i).getParentNode().getNodeName().equals(validateParentNodeName)) {
                 deleteNode(exclusionNodes.item(i), true);
+                changed = true;
             }
         }
     }
@@ -368,6 +372,8 @@ public class PomManipulator {
         if (propertiesNode == null) {
             return version;
         }
+
+        changed = true;
 
         String propertiesIndent = findNodeIndentation(propertiesNode);
         String versionIndent = propertiesIndent + nestedIndentation;
