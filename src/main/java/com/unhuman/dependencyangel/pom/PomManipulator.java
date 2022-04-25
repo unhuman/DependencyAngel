@@ -20,10 +20,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PomManipulator {
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\r?\\n\\s+");
+    private static final Pattern PROPERTIES_VERSION = Pattern.compile("$\\{(.*)\\}");
     private static final String PROPERTIES_TAG = "properties";
     private static final String DEPENDENCY_MANAGEMENT_TAG = "dependencyManagement";
     private static final String DEPENDENCIES_TAG = "dependencies";
@@ -210,8 +212,17 @@ public class PomManipulator {
                     && artifactId.equals(artifactIdNode.getTextContent())) {
                 Node versionNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, VERSION_TAG);
                 if (versionNode != null) {
-                    // TODO: Handle version in properties
-                    versionNode.setTextContent(version.toString());
+                    String priorVersion = versionNode.getTextContent();
+                    Matcher matcher = PROPERTIES_VERSION.matcher(priorVersion);
+                    if (matcher.matches()) {
+                        String key = matcher.group(1);
+                        NodeList versionElements = document.getElementsByTagName(key);
+                        if (versionElements.getLength() == 1) {
+                            versionElements.item(0).setTextContent(version.toString());
+                        }
+                    } else {
+                        versionNode.setTextContent(version.toString());
+                    }
                 }
                 // TODO: Handle missing version
 
@@ -245,11 +256,10 @@ public class PomManipulator {
         artifactNode.setTextContent(artifactId);
         newDependency.appendChild(artifactNode);
 
-        // TODO: Handle version in properties
-
         newDependency.appendChild(document.createTextNode(dependencyContentIndentation));
         Node versionNode = document.createElement(VERSION_TAG);
-        versionNode.setTextContent(version.toString());
+        String versionInfo = storeVersionInProperties(groupId, artifactId, version.toString());
+        versionNode.setTextContent(versionInfo);
         newDependency.appendChild(versionNode);
 
         newDependency.appendChild(document.createTextNode(dependencyContentIndentation));
@@ -320,7 +330,6 @@ public class PomManipulator {
             }
         }
     }
-
     protected void deleteNode(Node deleteNode, boolean cleanPriorWhitespace) {
         // clean up any indentation
         if (cleanPriorWhitespace) {
@@ -337,6 +346,31 @@ public class PomManipulator {
         changed = true;
     }
 
+    /**
+     * Stores the version in properties and returns an id - or the version
+     * @param version
+     */
+    protected String storeVersionInProperties(String groupId, String artifactId, String version) {
+        if (propertiesNode == null) {
+            return version;
+        }
+
+        String propertiesIndent = findNodeIndentation(propertiesNode);
+        String versionIndent = propertiesIndent + nestedIndentation;
+        String key = String.format("%s:%s-version", groupId, artifactId);
+
+        // Store value in properties
+        NodeList versionElements = document.getElementsByTagName(key);
+        if (versionElements.getLength() == 1) {
+            versionElements.item(0).setTextContent(version);
+        } else {
+            Node versionProperty = document.createElement(key);
+            versionProperty.setTextContent(version);
+            addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
+            addLastChild(propertiesNode, versionProperty, propertiesIndent);
+        }
+        return String.format("${%s}", key);
+    }
     public void saveFile() throws TransformerException, FileNotFoundException {
         // only save if something changed
         if (!changed) {
