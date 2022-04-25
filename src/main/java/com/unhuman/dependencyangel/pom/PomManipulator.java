@@ -156,35 +156,46 @@ public class PomManipulator {
                 Node exclusionsNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, EXCLUSIONS_TAG);
                 if (exclusionsNode == null) {
                     exclusionsNode = document.createElement(EXCLUSIONS_TAG);
-                    dependencyNode.appendChild(document.createTextNode(exclusionsIndent));
-                    dependencyNode.appendChild(exclusionsNode);
-                    dependencyNode.appendChild(document.createTextNode(dependencyIndentation));
+
+                    addLastChild(dependencyNode, document.createTextNode(exclusionsIndent), dependencyIndentation);
+                    addLastChild(dependencyNode, exclusionsNode, dependencyIndentation);
                 }
 
                 // add a new <exclusion>
+                String exclusionIndent = exclusionsIndent + nestedIndentation;
+                String exclusionContentIndent = exclusionIndent + nestedIndentation;
                 Node newExclusion = document.createElement(EXCLUSION_TAG);
 
-                newExclusion.appendChild(document.createTextNode(
-                        exclusionsIndent + nestedIndentation + nestedIndentation));
+                addLastChild(newExclusion, document.createTextNode(exclusionContentIndent), exclusionIndent);
                 Node excludeGroupIdNode = document.createElement(GROUP_ID_TAG);
                 excludeGroupIdNode.setTextContent(exclusionGroupId);
-                newExclusion.appendChild(excludeGroupIdNode);
+                addLastChild(newExclusion, excludeGroupIdNode, exclusionIndent);
 
-                newExclusion.appendChild(document.createTextNode(
-                        dependencyContentIndentation + nestedIndentation + nestedIndentation));
+                addLastChild(newExclusion, document.createTextNode(exclusionContentIndent), exclusionIndent);
                 Node excludeArtifactIdNode = document.createElement(ARTIFACT_ID_TAG);
                 excludeArtifactIdNode.setTextContent(exclusionArtifactId);
-                newExclusion.appendChild(excludeArtifactIdNode);
+                addLastChild(newExclusion, excludeArtifactIdNode, exclusionIndent);
 
-                // add an indentation to the end of the last element so the closing element looks correct
-                newExclusion.appendChild(document.createTextNode(dependencyContentIndentation + nestedIndentation));
-
-                exclusionsNode.appendChild(document.createTextNode(dependencyContentIndentation + nestedIndentation));
-
-                exclusionsNode.appendChild(newExclusion);
-
-                exclusionsNode.appendChild(document.createTextNode(dependencyContentIndentation));
+                addLastChild(exclusionsNode, document.createTextNode(exclusionIndent), dependencyContentIndentation);
+                addLastChild(exclusionsNode, newExclusion, dependencyContentIndentation);
             }
+        }
+    }
+
+    protected void addLastChild(Node parentNode, Node addNode, String parentNodeIndentation) {
+        Node lastChild = parentNode.getLastChild();
+        Node appendPoint = (lastChild != null
+                && lastChild.getNodeType() == Node.TEXT_NODE
+                && lastChild.getTextContent().isBlank()
+                && lastChild.getPreviousSibling() != null)
+                ? lastChild.getPreviousSibling() : null;
+        if (appendPoint != null) {
+            lastChild = parentNode.removeChild(lastChild);
+            parentNode.appendChild(addNode);
+            parentNode.appendChild(lastChild);
+        } else {
+            parentNode.appendChild(addNode);
+            parentNode.appendChild(document.createTextNode(parentNodeIndentation));
         }
     }
 
@@ -217,8 +228,10 @@ public class PomManipulator {
     public void addForcedDependencyNode(String groupId, String artifactId, Version version, String scope) {
         changed = true;
 
-        dependenciesNode.appendChild(document.createTextNode(dependencyIndentation));
-        dependenciesNode.appendChild(document.createComment(COMMENT_ADD_DEPENDENCY_START));
+        addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation),
+                dependencyIndentation);
+        addLastChild(dependenciesNode, document.createComment(COMMENT_ADD_DEPENDENCY_START),
+                dependencyIndentation);
 
         Node newDependency = document.createElement(DEPENDENCY_TAG);
 
@@ -247,12 +260,11 @@ public class PomManipulator {
         // add an indentation to the end of the last element so the closing element looks correct
         newDependency.appendChild(document.createTextNode(dependencyIndentation));
 
-        dependenciesNode.appendChild(document.createTextNode(dependencyIndentation));
-        dependenciesNode.appendChild(newDependency);
+        addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
+        addLastChild(dependenciesNode, newDependency, dependenciesIndentation);
 
-        dependenciesNode.appendChild(document.createTextNode(dependencyIndentation));
-        dependenciesNode.appendChild(document.createComment(COMMENT_ADD_DEPENDENCY_END));
-        dependenciesNode.appendChild(document.createTextNode(dependenciesIndentation));
+        addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
+        addLastChild(dependenciesNode, document.createComment(COMMENT_ADD_DEPENDENCY_END), dependenciesIndentation);
     }
 
     public void stripExclusions() {
