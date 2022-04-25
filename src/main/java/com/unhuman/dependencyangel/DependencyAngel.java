@@ -253,19 +253,14 @@ public class DependencyAngel {
                     }
                     output.add(line);
                 }
-                if (!foundDesiredValue) {
-                    throw new RuntimeException(String.format("Could not find desired value in output: %s",
-                            errorMatchForSuccess));
-                }
             }
 
             int processResult = process.waitFor();
 
             if (processResult != 0 && !foundDesiredValue) {
-                throw new RuntimeException(String.format("Process: %s failed with status code %d",
-                        Arrays.stream(commandAndParams).toArray().toString(), processResult));
+                throw new RuntimeException(String.format("Could not find desired value in output: %s status code: %d",
+                        errorMatchForSuccess, processResult));
             }
-
         } catch (Exception e) {
             if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;
