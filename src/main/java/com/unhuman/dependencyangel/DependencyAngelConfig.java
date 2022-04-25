@@ -9,11 +9,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DependencyAngelConfig {
+    public enum Mode { SetupDependencyManagement, Process }
+
     private String directory;
     private Map<String, String> environmentVars;
     private boolean skipPrompts;
     private boolean cleanOnly;
     private boolean noClean;
+    private Mode mode;
 
     public DependencyAngelConfig(String[] args) {
         this.directory = null;
@@ -21,32 +24,39 @@ public class DependencyAngelConfig {
         this.skipPrompts = false;
         this.cleanOnly = false;
         this.noClean = false;
+        this.mode = Mode.Process;
 
         ArgumentParser parser = ArgumentParsers.newFor(DependencyAngel.class.getSimpleName()).build()
                 .defaultHelp(true)
-                .description("Resolve conflicting dependencies (exclusions).");
+                .description("Resolve conflicting dependencies (exclusions).  " +
+                        "This is a destructive process.  Have backups!");
         parser.addArgument("-c", "--cleanOnly")
                 .type(Boolean.class)
                 .required(false)
                 .setDefault(false)
-                .help("Perform clean up only (cannot be used with noClean)");
+                .help("Perform clean up only (cannot be used with noClean).  For process mode.");
+        parser.addArgument("-e", "--env")
+                .type(String.class)
+                .required(false)
+                .help("Specify environment variables (comma separated, k=v pairs).  For process mode.");
+        parser.addArgument("-m", "--mode")
+                .type(Mode.class)
+                .required(false)
+                .setDefault(Mode.Process)
+                .help("Mode how to operate (SetupDependencyManagement or Process).");
         parser.addArgument("-n", "--noClean")
                 .type(Boolean.class)
                 .required(false)
                 .setDefault(false)
-                .help("Skips clean step (cannot be use with cleanOnly)");
-        parser.addArgument("-e", "--env")
-                .type(String.class)
-                .required(false)
-                .help("Specify environment variables (comma separated, k=v pairs");
+                .help("Skips clean step (cannot be use with cleanOnly).");
         parser.addArgument("-s", "--skipPrompts")
                 .type(Boolean.class)
                 .setDefault(false)
-                .help("Specify to skip any prompts");
+                .help("Specify to skip any prompts.");
         parser.addArgument("directory")
                 .type(String.class)
                 .required(true)
-                .help("directory of project to modify");
+                .help("Directory of project to modify.");
         Namespace ns = null;
         try {
             ns = parser.parseArgs(args);
@@ -60,6 +70,7 @@ public class DependencyAngelConfig {
             cleanOnly = ns.getBoolean("cleanOnly");
             skipPrompts = ns.getBoolean("skipPrompts");
             noClean = ns.getBoolean("noClean");
+            mode = ns.get("mode");
         } catch (ArgumentParserException e) {
             parser.handleError(e);
             System.exit(1);
@@ -91,7 +102,9 @@ public class DependencyAngelConfig {
         return noClean;
     }
 
-
+    public Mode getMode() {
+        return mode;
+    }
 
     protected static Map<String, String> getEnvParameterMap(String env) {
         Map<String, String> environmentVars = new HashMap<>();

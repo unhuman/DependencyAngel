@@ -74,23 +74,25 @@ public class PomManipulator {
         dependenciesNode = findDesiredNode(document.getElementsByTagName(DEPENDENCIES_TAG),
                 dependencyManagementList, projectNode);
 
-        dependenciesIndentation = findNodeIndentation(dependenciesNode);
+        if (dependenciesNode != null) {
+            dependenciesIndentation = findNodeIndentation(dependenciesNode);
 
-        // Find indentations we need to use for child nodes
-        List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
-        Node groupIdNode = null;
-        if (dependencyNodes.size() > 0) {
-            Node dependencyNode = dependencyNodes.get(0);
-            if (dependencyIndentation == null) {
-                dependencyIndentation = findNodeIndentation(dependencyNode);
+            // Find indentations we need to use for child nodes
+            List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+            Node groupIdNode = null;
+            if (dependencyNodes.size() > 0) {
+                Node dependencyNode = dependencyNodes.get(0);
+                if (dependencyIndentation == null) {
+                    dependencyIndentation = findNodeIndentation(dependencyNode);
+                }
+                groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
             }
-            groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
-        }
-        if (groupIdNode != null) {
-            if (dependencyContentIndentation == null) {
-                dependencyContentIndentation = findNodeIndentation(groupIdNode);
-                if (dependencyContentIndentation.length() > dependencyIndentation.length()) {
-                    nestedIndentation = dependencyContentIndentation.substring(dependencyIndentation.length());
+            if (groupIdNode != null) {
+                if (dependencyContentIndentation == null) {
+                    dependencyContentIndentation = findNodeIndentation(groupIdNode);
+                    if (dependencyContentIndentation.length() > dependencyIndentation.length()) {
+                        nestedIndentation = dependencyContentIndentation.substring(dependencyIndentation.length());
+                    }
                 }
             }
         }
@@ -290,6 +292,11 @@ public class PomManipulator {
         stripForcedTransitiveDependencies(dependenciesNode);
     }
     protected void stripForcedTransitiveDependencies(Node parentNode) {
+        // ensure we have something to do
+        if (parentNode == null) {
+            return;
+        }
+
         NodeList dependencies = parentNode.getChildNodes();
         boolean deleting = false;
 

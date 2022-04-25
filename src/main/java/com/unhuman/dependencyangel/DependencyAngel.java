@@ -30,30 +30,39 @@ public class DependencyAngel {
             Pattern.compile("DependencyConvergence failed with message");
 
     DependencyAngelConfig config;
+    // Flag to track this so we don't prompt multiple times
+    private boolean allowProcessing = false;
 
     protected DependencyAngel(DependencyAngelConfig config) {
         this.config = config;
     }
 
-    private String getPomFilePath() {
-        return config.getDirectory() + File.separator + "pom.xml";
+    private static String getPomFilePath(String directoryOrFile) {
+        String suffix = File.separator + "pom.xml";
+        return (directoryOrFile.endsWith(suffix)) ? directoryOrFile : directoryOrFile + suffix;
     }
 
-    protected void process() {
-        File directoryFile = new File(config.getDirectory()).getAbsoluteFile();
+    protected File prepareOperation(String directory) {
+        File directoryFile = new File(directory).getAbsoluteFile();
         if (!directoryFile.isDirectory()) {
-            throw new RuntimeException(String.format("%s is not a directory", config.getDirectory()));
+            throw new RuntimeException(String.format("%s is not a directory", directory));
         }
 
-        Path pomPath = Paths.get(getPomFilePath());
+        Path pomPath = Paths.get(getPomFilePath(directory));
         if (!Files.isRegularFile(pomPath)) {
-            throw new RuntimeException(String.format("Directory: %s does not contain pom.xml", config.getDirectory()));
+            throw new RuntimeException(String.format("Directory: %s does not contain pom.xml", directory));
         }
 
         allowProcessing();
 
         // Open the pom file and remove any exclusions and forced transitive dependencies
-        performPomCleanup();
+        performPomCleanup(config.getDirectory());
+
+        return directoryFile;
+    }
+
+    protected void process() {
+        File directoryFile = prepareOperation(config.getDirectory());
 
         if (config.isCleanOnly()) {
             return;
@@ -90,16 +99,53 @@ public class DependencyAngel {
         // Happiness
     }
 
-    private void performPomCleanup() {
+    protected void setupDependencyManagement() {
+        File directoryFile = prepareOperation(config.getDirectory());
+
+        // build up a list of subdirectories with pom.xml in them
+        List<File> childPoms = findChildPomFiles(config.getDirectory(), config.getDirectory());
+        for (File childPom: childPoms) {
+            performPomCleanup(childPom.getAbsolutePath());
+        }
+
+        if (config.isCleanOnly()) {
+            return;
+        }
+    }
+
+    /**
+     *
+     * @param directoryName
+     * @param ignoreDirectoryName (don't find pom files for this directory (root)
+     * @return
+     */
+    private static List<File> findChildPomFiles(String directoryName, String ignoreDirectoryName) {
+        File directory = new File(directoryName);
+
+        List<File> childPoms = new ArrayList<>();
+
+        // get all the files from a directory
+        File[] checkFiles = directory.listFiles();
+        for (File checkFile: checkFiles) {
+            if (!directoryName.equals(ignoreDirectoryName) && checkFile.isFile() && checkFile.getName().equals("pom.xml")) {
+                childPoms.add(checkFile);
+            } else if (checkFile.isDirectory()) {
+                childPoms.addAll(findChildPomFiles(checkFile.getAbsolutePath(), ignoreDirectoryName));
+            }
+        }
+        return childPoms;
+    }
+
+    private void performPomCleanup(String directoryOrPomFile) {
         if (!config.isNoClean()) {
             try {
-                PomManipulator pomManipulator = new PomManipulator(getPomFilePath());
+                PomManipulator pomManipulator = new PomManipulator(getPomFilePath(directoryOrPomFile));
                 pomManipulator.stripExclusions();
                 pomManipulator.stripForcedTransitiveDependencies();
                 pomManipulator.saveFile();
-                System.out.println("pom.xml file cleaned");
+                System.out.println("pom cleaned: " + directoryOrPomFile);
             } catch (Exception e) {
-                throw new RuntimeException("Problem processing pom file: " + getPomFilePath(), e);
+                throw new RuntimeException("Problem processing pom file: " + getPomFilePath(directoryOrPomFile), e);
             }
         }
     }
@@ -152,7 +198,7 @@ public class DependencyAngel {
     private void updatePomFile(List<ResolvedDependencyDetailsList> workList) {
         // Update pom.xml
         try {
-            PomManipulator pomManipulator = new PomManipulator(getPomFilePath());
+            PomManipulator pomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
 
             // Update dependencies
             for (ResolvedDependencyDetailsList workItem: workList) {
@@ -188,7 +234,7 @@ public class DependencyAngel {
 
             pomManipulator.saveFile();
         } catch (Exception e) {
-            throw new RuntimeException("Problem processing pom file: " + getPomFilePath(), e);
+            throw new RuntimeException("Problem processing pom file: " + getPomFilePath(config.getDirectory()), e);
         }
     }
 
@@ -196,7 +242,10 @@ public class DependencyAngel {
      * Ensure that we can process this request / warn the user
      */
     protected void allowProcessing() {
-        if (!config.isSkipPrompts()) {
+        if (allowProcessing || config.isSkipPrompts()) {
+            // we allow processing if skipping prompts
+            allowProcessing = true;
+        } else {
             while (true) {
                 try {
                     System.out.print("This is destructive - are you sure you want to continue (y/n)?: ");
@@ -204,6 +253,8 @@ public class DependencyAngel {
                     String value = reader.readLine().toLowerCase();
 
                     if (value.matches("y(es)?")) {
+                        // track we accepted this, so we don't prompt multiple times
+                        allowProcessing = true;
                         break;
                     }
 
@@ -274,7 +325,16 @@ public class DependencyAngel {
         try {
             DependencyAngelConfig config = new DependencyAngelConfig(args);
             DependencyAngel angel = new DependencyAngel(config);
-            angel.process();
+            switch (config.getMode()) {
+                case Process:
+                    angel.process();
+                    break;
+                case SetupDependencyManagement:
+                    angel.setupDependencyManagement();
+                    break;
+                default:
+                    throw new RuntimeException("Invalid operating mode: " + config.getMode());
+            }
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace(System.err);
