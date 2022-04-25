@@ -38,6 +38,7 @@ public class DependencyAngel {
     private String getPomFilePath() {
         return config.getDirectory() + File.separator + "pom.xml";
     }
+
     protected void process() {
         File directoryFile = new File(config.getDirectory()).getAbsoluteFile();
         if (!directoryFile.isDirectory()) {
@@ -61,7 +62,7 @@ public class DependencyAngel {
         // this processing may take multiple iterations if there are nested dependencies
         List<DependencyConflict> conflicts;
         int iteration = 0;
-        do {
+        while (true) {
             List<String> analyzeResults;
             try {
                 analyzeResults = executeCommand(directoryFile, CONVERGE_ERROR, MVN_COMMAND,
@@ -77,9 +78,14 @@ public class DependencyAngel {
             System.out.println(String.format("Iteration %d: %d conflicts remaining",
                     ++iteration, conflicts.size()));
 
+            // We are done when there are no conflicts detected
+            if (conflicts.size() == 0) {
+                break;
+            }
+
             List<ResolvedDependencyDetailsList> workList = calculatePomChanges(conflicts);
             updatePomFile(workList);
-        } while (conflicts.size() > 0);
+        }
 
         // Happiness
     }
