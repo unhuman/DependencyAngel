@@ -1,5 +1,7 @@
 package com.unhuman.dependencyangel.pom;
 
+import com.unhuman.dependencyangel.DependencyAngelConfig;
+import com.unhuman.dependencyangel.dependency.Dependency;
 import com.unhuman.dependencyangel.versioning.Version;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -348,16 +350,47 @@ public class PomManipulator {
         return newDependency;
     }
 
-    public void stripExclusions() {
+    public void stripExclusions(DependencyAngelConfig config) {
         // only strip exclusions whose parent node is a dependency
-        stripNodes(EXCLUSIONS_TAG, DEPENDENCY_TAG);
+        NodeList exclusionsNodes = document.getElementsByTagName(EXCLUSIONS_TAG);
+        for (int i = 0; i < exclusionsNodes.getLength(); i++) {
+            boolean deleteExclusionsNode = true;
+
+            if (exclusionsNodes.item(i).getParentNode().getNodeName().equals(DEPENDENCY_TAG)) {
+                List<Node> exclusionNodes = findChildNodes(exclusionsNodes.item(i), Node.ELEMENT_NODE, EXCLUSION_TAG);
+                for (Node exclusionNode: exclusionNodes) {
+                    String groupId = getSingleNodeElement(exclusionNode, GROUP_ID_TAG, true)
+                            .getTextContent();
+                    String artifactId = getSingleNodeElement(exclusionNode, ARTIFACT_ID_TAG, true)
+                            .getTextContent();
+
+                    // don't delete banned exclusions
+                    boolean foundBannedDependency = false;
+                    for (Dependency banned : config.getBannedDependencies()) {
+                        if (banned.getGroup().equals(groupId) && banned.getArtifact().equals(artifactId)) {
+                            foundBannedDependency = true;
+                            // We found a banned dependency, so we need to keep the exclusions parent
+                            deleteExclusionsNode = false;
+                            break;
+                        }
+                    }
+                    if (!foundBannedDependency) {
+                        deleteNode(exclusionNode, true);
+                    }
+                }
+            }
+
+            if (deleteExclusionsNode) {
+                deleteNode(exclusionsNodes.item(i), true);
+            }
+        }
     }
 
-    public void stripForcedTransitiveDependencies() {
-        stripForcedTransitiveDependencies(propertiesNode);
-        stripForcedTransitiveDependencies(dependenciesNode);
+    public void stripDependencyAngelDependencies() {
+        stripDependencyAngelDependencies(propertiesNode);
+        stripDependencyAngelDependencies(dependenciesNode);
     }
-    protected void stripForcedTransitiveDependencies(Node parentNode) {
+    protected void stripDependencyAngelDependencies(Node parentNode) {
         // ensure we have something to do
         if (parentNode == null) {
             return;

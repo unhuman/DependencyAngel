@@ -235,8 +235,8 @@ public class DependencyAngel {
         if (!config.isNoClean()) {
             String pomFilePath = getPomFilePath(directoryOrPomFilePath);
             PomManipulator pomManipulator = new PomManipulator(pomFilePath);
-            pomManipulator.stripExclusions();
-            pomManipulator.stripForcedTransitiveDependencies();
+            pomManipulator.stripExclusions(config);
+            pomManipulator.stripDependencyAngelDependencies();
             pomManipulator.saveFile();
             System.out.println("pom cleaned: " + pomFilePath);
         }
