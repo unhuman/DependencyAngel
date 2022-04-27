@@ -17,6 +17,7 @@ public class DependencyAngelConfig {
     private String directory;
     private Map<String, String> environmentVars;
     private List<Dependency> bannedDependencies;
+    private List<Dependency> preserveExclusions;
     private boolean skipPrompts;
     private boolean cleanOnly;
     private boolean noClean;
@@ -30,6 +31,7 @@ public class DependencyAngelConfig {
         this.noClean = false;
         this.mode = Mode.Process;
         this.bannedDependencies = new ArrayList<>();
+        this.preserveExclusions = new ArrayList<>();
 
         ArgumentParser parser = ArgumentParsers.newFor(DependencyAngel.class.getSimpleName()).build()
                 .defaultHelp(true)
@@ -58,6 +60,10 @@ public class DependencyAngelConfig {
                 .required(false)
                 .setDefault(false)
                 .help("Skips clean step (cannot be use with cleanOnly).");
+        parser.addArgument("-p", "--preserveExclusions")
+                .type(String.class)
+                .required(false)
+                .help("List of existing exclusions to explicitly preserve.");
         parser.addArgument("-s", "--skipPrompts")
                 .type(Boolean.class)
                 .setDefault(false)
@@ -81,19 +87,8 @@ public class DependencyAngelConfig {
             noClean = ns.getBoolean("noClean");
             mode = ns.get("mode");
 
-            String banned = ns.getString("banned");
-            if (banned != null) {
-                try {
-                    String[] bannedItems = banned.split("[,]+");
-                    for (String bannedItem : bannedItems) {
-                        String[] parts = bannedItem.split(":");
-                        Dependency dependency = new Dependency(parts[0], parts[1], null, null, null);
-                        bannedDependencies.add(dependency);
-                    }
-                } catch (Exception e) {
-                    throw new RuntimeException("Invalid bannedDependencies: " + banned);
-                }
-            }
+            bannedDependencies = getDependenciesList(ns, "banned");
+            preserveExclusions = getDependenciesList(ns, "preserveExclusions");
         } catch (ArgumentParserException e) {
             parser.handleError(e);
             System.exit(1);
@@ -102,6 +97,28 @@ public class DependencyAngelConfig {
         if (cleanOnly && noClean) {
             throw new RuntimeException("cleanOnly and noClean cannot be provided together");
         }
+        
+        if (mode.equals(Mode.SetupDependencyManagement) && noClean) {
+            throw new RuntimeException("cleanOnly and setupDependencyManagement cannot be provided together");
+        }
+    }
+
+    private List<Dependency> getDependenciesList(Namespace ns, String itemExtract) {
+        String data = ns.getString(itemExtract);
+        List<Dependency> dependencies = new ArrayList<>();
+        if (data != null) {
+            try {
+                String[] items = data.split("[,]+");
+                for (String item : items) {
+                    String[] parts = item.split(":");
+                    Dependency dependency = new Dependency(parts[0], parts[1], null, null, null);
+                    dependencies.add(dependency);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Invalid config item: " + itemExtract + " - " + data);
+            }
+        }
+        return dependencies;
     }
 
 
@@ -131,6 +148,10 @@ public class DependencyAngelConfig {
 
     public List<Dependency> getBannedDependencies() {
         return bannedDependencies;
+    }
+
+    public List<Dependency> getPreserveExclusions() {
+        return preserveExclusions;
     }
 
     protected static Map<String, String> getEnvParameterMap(String env) {

@@ -351,6 +351,10 @@ public class PomManipulator {
     }
 
     public void stripExclusions(DependencyAngelConfig config) {
+        // preserved exclusions and banned dependencies are both treated the same (skip existing exclusions)
+        List<Dependency> skipDependencyExclusions = config.getPreserveExclusions();
+        skipDependencyExclusions.addAll(config.getBannedDependencies());
+
         // only strip exclusions whose parent node is a dependency
         NodeList exclusionsNodes = document.getElementsByTagName(EXCLUSIONS_TAG);
         for (int i = 0; i < exclusionsNodes.getLength(); i++) {
@@ -365,21 +369,22 @@ public class PomManipulator {
                             .getTextContent();
 
                     // don't delete banned exclusions
-                    boolean foundBannedDependency = false;
-                    for (Dependency banned : config.getBannedDependencies()) {
-                        if (banned.getGroup().equals(groupId) && banned.getArtifact().equals(artifactId)) {
-                            foundBannedDependency = true;
+                    boolean keptExclusion = false;
+                    for (Dependency skipExclusion : skipDependencyExclusions) {
+                        if (skipExclusion.getGroup().equals(groupId) && skipExclusion.getArtifact().equals(artifactId)) {
+                            keptExclusion = true;
                             // We found a banned dependency, so we need to keep the exclusions parent
                             deleteExclusionsNode = false;
                             break;
                         }
                     }
-                    if (!foundBannedDependency) {
+                    if (!keptExclusion) {
                         deleteNode(exclusionNode, true);
                     }
                 }
             }
 
+            // Only delete the exclusions node if we deleted all the nested exclusions within
             if (deleteExclusionsNode) {
                 deleteNode(exclusionsNodes.item(i), true);
             }
