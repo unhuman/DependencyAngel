@@ -242,10 +242,19 @@ public class PomManipulator {
 
     public boolean updateExplicitVersion(String groupId, String artifactId, Version version, String scope) {
         List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+
+        // Don't allow a value of a version to be a lookup (probably of itself)
+        if (PROPERTIES_VERSION.matcher(version.toString()).matches())
+        {
+            return false;
+        }
+
         boolean modified = false;
         for (Node dependencyNode: dependencyNodes) {
             Node groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
             Node artifactIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, ARTIFACT_ID_TAG);
+
+            // TODO: When we overwrite a version explicitly, let's choose latest version
 
             if (groupId.equals(groupIdNode.getTextContent())
                     && artifactId.equals(artifactIdNode.getTextContent())) {
@@ -282,6 +291,7 @@ public class PomManipulator {
             }
         }
         dirty = (modified) ? modified : dirty;
+
         return modified;
     }
 

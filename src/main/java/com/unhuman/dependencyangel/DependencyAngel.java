@@ -118,7 +118,8 @@ public class DependencyAngel {
     }
 
     protected void setupDependencyManagement() throws ParserConfigurationException, IOException, SAXException {
-        File directoryFile = prepareOperation(config.getDirectory());
+        // Ensure we are in a valid place to start
+        prepareOperation(config.getDirectory());
 
         // Create a manipulator for the parent pom, so we can validate it correctly
         PomManipulator parentPomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
@@ -164,13 +165,11 @@ public class DependencyAngel {
                     Matcher propertiesVersionMatcher = PROPERTIES_VERSION.matcher(versionText);
                     if (propertiesVersionMatcher.matches()) {
                         versionPropertyNode = nestedManipulator.findSingleElement(versionText, false);
+                        if (versionPropertyNode != null) {
+                            versionText = versionPropertyNode.getTextContent();
+                        }
                         // If we find a version property, but can't lookup the value, then we can assume
                         // this is a project-level dependency.
-                        if (versionPropertyNode == null) {
-                            continue;
-                        }
-
-                        versionText = versionPropertyNode.getTextContent();
                     }
                     version = (versionText != null) ? new Version(versionText) : null;
                 }
