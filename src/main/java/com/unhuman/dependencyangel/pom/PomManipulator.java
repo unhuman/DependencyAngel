@@ -240,16 +240,21 @@ public class PomManipulator {
         }
     }
 
+    /**
+     * Updates an existing node
+     * @param groupId
+     * @param artifactId
+     * @param version
+     * @param scope
+     * @return true if an existing node was found (not necessarily updated)
+     */
     public boolean updateExplicitVersion(String groupId, String artifactId, Version version, String scope) {
         List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
 
         // Don't allow a value of a version to be a lookup (probably of itself)
-        if (PROPERTIES_VERSION.matcher(version.toString()).matches())
-        {
-            return false;
-        }
+        boolean skipVersion = PROPERTIES_VERSION.matcher(version.toString()).matches();
 
-        boolean modified = false;
+        boolean foundExistingNode = false;
         for (Node dependencyNode: dependencyNodes) {
             Node groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
             Node artifactIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, ARTIFACT_ID_TAG);
@@ -258,21 +263,23 @@ public class PomManipulator {
 
             if (groupId.equals(groupIdNode.getTextContent())
                     && artifactId.equals(artifactIdNode.getTextContent())) {
-                Node versionNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, VERSION_TAG);
-                if (versionNode != null) {
-                    modified = true;
-                    String priorVersion = versionNode.getTextContent();
-                    Matcher matcher = PROPERTIES_VERSION.matcher(priorVersion);
-                    if (matcher.matches()) {
-                        String key = matcher.group(1);
-                        NodeList versionElements = document.getElementsByTagName(key);
-                        if (versionElements.getLength() == 1) {
-                            versionElements.item(0).setTextContent(version.toString());
+                foundExistingNode = true;
+                if (!skipVersion) {
+                    Node versionNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, VERSION_TAG);
+                    if (versionNode != null) {
+                        String priorVersion = versionNode.getTextContent();
+                        Matcher matcher = PROPERTIES_VERSION.matcher(priorVersion);
+                        if (matcher.matches()) {
+                            String key = matcher.group(1);
+                            NodeList versionElements = document.getElementsByTagName(key);
+                            if (versionElements.getLength() == 1) {
+                                versionElements.item(0).setTextContent(version.toString());
+                            } else {
+                                throw new RuntimeException("Couldn't find property: " + key);
+                            }
                         } else {
-                            throw new RuntimeException("Couldn't find property: " + key);
+                            versionNode.setTextContent(version.toString());
                         }
-                    } else {
-                        versionNode.setTextContent(version.toString());
                     }
                 }
 
@@ -280,7 +287,6 @@ public class PomManipulator {
 
                 Node scopeNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, SCOPE_TAG);
                 if (scopeNode != null) {
-                    modified = true;
                     if (scope != null) {
                         scopeNode.setTextContent(scope);
                     } else {
@@ -290,9 +296,9 @@ public class PomManipulator {
                 }
             }
         }
-        dirty = (modified) ? modified : dirty;
+        dirty = (foundExistingNode) ? foundExistingNode : dirty;
 
-        return modified;
+        return foundExistingNode;
     }
 
     public Node getDependencesNode() {
