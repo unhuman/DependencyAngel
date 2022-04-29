@@ -505,7 +505,7 @@ public class PomManipulator {
 
         String propertiesIndent = findNodeIndentation(propertiesNode);
         String versionIndent = propertiesIndent + nestedIndentation;
-        String key = String.format("%s:%s-version", groupId, artifactId);
+        String key = String.format("%s-%s.version", groupId, artifactId);
 
         // Store value in properties
         NodeList versionElements = document.getElementsByTagName(key);
