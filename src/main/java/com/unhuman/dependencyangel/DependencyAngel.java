@@ -387,6 +387,9 @@ public class DependencyAngel {
                 // Process the data we had, too
                 while ((line = outputReader.readLine()) != null) {
                     allOutput.add(line);
+                    if (config.isDisplayExecutionOutput()) {
+                        System.out.println(line);
+                    }
                     if (!foundDesiredValue && errorMatchForSuccess.matcher(line).find()) {
                         System.out.println("Found desired line: " + errorMatchForSuccess);
                         foundDesiredValue = true;

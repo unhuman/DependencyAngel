@@ -21,6 +21,7 @@ public class DependencyAngelConfig {
     private boolean skipPrompts;
     private boolean cleanOnly;
     private boolean noClean;
+    private boolean displayExecutionOutput;
     private Mode mode;
 
     public DependencyAngelConfig(String[] args) {
@@ -46,6 +47,11 @@ public class DependencyAngelConfig {
                 .required(false)
                 .setDefault(false)
                 .help("Perform clean up only (cannot be used with noClean).  For process mode.");
+        parser.addArgument("-d", "--displayExecutionOutput")
+                .type(Boolean.class)
+                .required(false)
+                .setDefault(false)
+                .help("Display external process execution output.");
         parser.addArgument("-e", "--env")
                 .type(String.class)
                 .required(false)
@@ -86,6 +92,7 @@ public class DependencyAngelConfig {
             skipPrompts = ns.getBoolean("skipPrompts");
             noClean = ns.getBoolean("noClean");
             mode = ns.get("mode");
+            displayExecutionOutput = ns.get("displayExecutionOutput");
 
             bannedDependencies = getDependenciesList(ns, "banned");
             preserveExclusions = getDependenciesList(ns, "preserveExclusions");
@@ -97,7 +104,7 @@ public class DependencyAngelConfig {
         if (cleanOnly && noClean) {
             throw new RuntimeException("cleanOnly and noClean cannot be provided together");
         }
-        
+
         if (mode.equals(Mode.SetupDependencyManagement) && noClean) {
             throw new RuntimeException("cleanOnly and setupDependencyManagement cannot be provided together");
         }
@@ -140,6 +147,10 @@ public class DependencyAngelConfig {
 
     public boolean isNoClean() {
         return noClean;
+    }
+
+    public boolean isDisplayExecutionOutput() {
+        return displayExecutionOutput;
     }
 
     public Mode getMode() {
