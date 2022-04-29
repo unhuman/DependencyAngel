@@ -350,16 +350,20 @@ public class PomManipulator {
         artifactNode.setTextContent(artifactId);
         newDependency.appendChild(artifactNode);
 
-        newDependency.appendChild(document.createTextNode(contentIndentation));
-        Node versionNode = document.createElement(VERSION_TAG);
-        String versionInfo = storeVersionInProperties(groupId, artifactId, version.toString(), needAngelComment);
-        versionNode.setTextContent(versionInfo);
-        newDependency.appendChild(versionNode);
+        if (version != null) {
+            newDependency.appendChild(document.createTextNode(contentIndentation));
+            Node versionNode = document.createElement(VERSION_TAG);
+            String versionInfo = storeVersionInProperties(groupId, artifactId, version.toString(), needAngelComment);
+            versionNode.setTextContent(versionInfo);
+            newDependency.appendChild(versionNode);
+        }
 
-        newDependency.appendChild(document.createTextNode(contentIndentation));
-        Node scopeNode = document.createElement(SCOPE_TAG);
-        scopeNode.setTextContent(scope);
-        newDependency.appendChild(scopeNode);
+        if (scope != null) {
+            newDependency.appendChild(document.createTextNode(contentIndentation));
+            Node scopeNode = document.createElement(SCOPE_TAG);
+            scopeNode.setTextContent(scope);
+            newDependency.appendChild(scopeNode);
+        }
 
         // add an indentation to the end of the last element so the closing element looks correct
         newDependency.appendChild(document.createTextNode(indentation));

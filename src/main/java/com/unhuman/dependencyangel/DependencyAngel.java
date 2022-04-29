@@ -197,9 +197,9 @@ public class DependencyAngel {
             // TODO: Update or add dependency / latest version
             // TODO: Scope is forced to null here - that correct?
             if (!parentPomManipulator.updateExplicitVersion(
-                    dependency.getGroup(), dependency.getArtifact(), dependency.getVersion(), null)) {
-                parentPomManipulator.addDependencyNode(
-                        dependency.getGroup(), dependency.getArtifact(), dependency.getVersion(), null);
+                    dependency.getGroup(), dependency.getArtifact(), dependency.getVersion(), dependency.getScope())) {
+                parentPomManipulator.addDependencyNode(dependency.getGroup(), dependency.getArtifact(),
+                        dependency.getVersion(), dependency.getScope());
             }
         }
         parentPomManipulator.saveFile();
