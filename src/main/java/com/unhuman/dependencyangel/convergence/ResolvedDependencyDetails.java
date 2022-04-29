@@ -40,6 +40,18 @@ public class ResolvedDependencyDetails extends ArrayList<Dependency> {
         return (hasMultipleDependencies() || version.compareTo(this.getLatestVersion()) > 0);
     }
 
+    public String getResolvedType() {
+        String type = null;
+        for (Dependency data: this) {
+            if (type == null) {
+                type = data.getType();
+            } else if (!type.equals(data.getType())) {
+                return null;
+            }
+        }
+        return type;
+    }
+
     public String getResolvedScope() {
         String scope = null;
         for (Dependency data: this) {

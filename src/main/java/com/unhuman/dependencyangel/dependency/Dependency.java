@@ -5,7 +5,7 @@ import com.unhuman.dependencyangel.versioning.Version;
 public class Dependency {
     private String group;
     private String artifact;
-    private String format;
+    private String type;
     private Version version;
     private String scope;
 
@@ -16,7 +16,7 @@ public class Dependency {
             int i = 0;
             group = details[i++];
             artifact = details[i++];
-            format = null;
+            type = null;
             version = new Version(details[i++]);
         } else if (details.length < 4) {
                 throw new RuntimeException("Invalid Dependency Data: " + String.join(":", data));
@@ -24,7 +24,7 @@ public class Dependency {
             int i = 0;
             group = details[i++];
             artifact = details[i++];
-            format = details[i++];
+            type = details[i++];
             version = new Version(details[i++]);
             if (details.length >= 5) {
                 scope = details[i++];
@@ -35,12 +35,12 @@ public class Dependency {
     protected Dependency(Dependency dependency) {
         this.group = dependency.getGroup();
         this.artifact = dependency.getArtifact();
-        this.format = dependency.getFormat();
+        this.type = dependency.getType();
         this.version = dependency.getVersion();
         this.scope = dependency.getScope();
     }
 
-    public Dependency(String groupId, String artifactId, String format, Version version, String scope) {
+    public Dependency(String groupId, String artifactId, String type, Version version, String scope) {
         if (groupId == null || groupId.isBlank()) {
             throw new RuntimeException("Missing dependency groupId");
         }
@@ -49,7 +49,7 @@ public class Dependency {
         }
         this.group = groupId;
         this.artifact = artifactId;
-        this.format = format;
+        this.type = type;
         this.version = version;
         this.scope = scope;
     }
@@ -62,8 +62,8 @@ public class Dependency {
         return artifact;
     }
 
-    public String getFormat() {
-        return format;
+    public String getType() {
+        return type;
     }
 
     public Version getVersion() {

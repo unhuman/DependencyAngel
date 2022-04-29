@@ -33,6 +33,7 @@ import static com.unhuman.dependencyangel.pom.PomManipulator.DEPENDENCY_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.GROUP_ID_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.PROPERTIES_VERSION;
 import static com.unhuman.dependencyangel.pom.PomManipulator.SCOPE_TAG;
+import static com.unhuman.dependencyangel.pom.PomManipulator.TYPE_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.VERSION_TAG;
 import static java.lang.System.exit;
 
@@ -154,7 +155,6 @@ public class DependencyAngel {
                         .getTextContent();
                 String artifactId = nestedManipulator.getSingleNodeElement(dependencyNode, ARTIFACT_ID_TAG, true)
                         .getTextContent();
-                String format = null; // pomManipulator.getSingleNodeElement(dependencyNode, FORMAT, false);
 
                 Version version = null;
                 Node versionNode = nestedManipulator.getSingleNodeElement(dependencyNode, VERSION_TAG, false);
@@ -176,9 +176,12 @@ public class DependencyAngel {
                 Node scopeNode = nestedManipulator.getSingleNodeElement(dependencyNode, SCOPE_TAG, false);
                 String scope = (scopeNode != null) ? scopeNode.getTextContent() : null;
 
+                Node typeNode = nestedManipulator.getSingleNodeElement(dependencyNode, TYPE_TAG, false);
+                String type = (typeNode != null) ? typeNode.getTextContent() : null;
+
                 // Create a dependency to update and remove version related nodes from the document
                 if (versionNode != null) {
-                    Dependency dependency = new Dependency(groupId, artifactId, format, version, scope);
+                    Dependency dependency = new Dependency(groupId, artifactId, type, version, scope);
 
                     dependenciesToManage.add(dependency);
 
@@ -193,13 +196,11 @@ public class DependencyAngel {
         // Now update the parent pom to have all the dependencies
         for (Dependency dependency: dependenciesToManage) {
             // Add or Update (handling version) the dependency
-
-            // TODO: Update or add dependency / latest version
-            // TODO: Scope is forced to null here - that correct?
             if (!parentPomManipulator.updateExplicitVersion(
-                    dependency.getGroup(), dependency.getArtifact(), dependency.getVersion(), dependency.getScope())) {
+                    dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
+                    dependency.getVersion(), dependency.getScope())) {
                 parentPomManipulator.addDependencyNode(dependency.getGroup(), dependency.getArtifact(),
-                        dependency.getVersion(), dependency.getScope());
+                        dependency.getType(), dependency.getVersion(), dependency.getScope());
             }
         }
         parentPomManipulator.saveFile();
@@ -305,6 +306,7 @@ public class DependencyAngel {
                     pomManipulator.updateExplicitVersion(
                             workDependency.getInitialDependency().getGroup(),
                             workDependency.getInitialDependency().getArtifact(),
+                            workItem.getResolvedType(),
                             workItem.getLatestVersion(), explicitDependencyScope);
                 }
                 if (workDependency.needsExclusion(explicitVersion)) {
@@ -318,7 +320,7 @@ public class DependencyAngel {
 
             if (needsExplicitDependency) {
                 pomManipulator.addForcedDependencyNode(workItem.getGroup(), workItem.getArtifact(),
-                        workItem.getLatestVersion(), explicitDependencyScope);
+                        workItem.getResolvedType(), workItem.getLatestVersion(), explicitDependencyScope);
             }
         }
 
