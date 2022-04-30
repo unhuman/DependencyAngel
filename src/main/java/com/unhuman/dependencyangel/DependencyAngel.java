@@ -179,15 +179,20 @@ public class DependencyAngel {
                 Node typeNode = nestedManipulator.getSingleNodeElement(dependencyNode, TYPE_TAG, false);
                 String type = (typeNode != null) ? typeNode.getTextContent() : null;
 
-                // Create a dependency to update and remove version related nodes from the document
-                if (versionNode != null) {
-                    Dependency dependency = new Dependency(groupId, artifactId, type, version, scope);
-
-                    dependenciesToManage.add(dependency);
-
-                    nestedManipulator.deleteNode(versionNode, true);
-                    nestedManipulator.deleteNode(versionPropertyNode, true);
+                // No version - we don't process this
+                if (version == null) {
+                    continue;
                 }
+
+                // Create a dependency to update info and remove related child nodes from the document
+                Dependency dependency = new Dependency(groupId, artifactId, type, version, scope);
+
+                dependenciesToManage.add(dependency);
+
+                nestedManipulator.deleteNode(versionNode, true);
+                nestedManipulator.deleteNode(versionPropertyNode, true);
+                //nestedManipulator.deleteNode(scopeNode, true);
+                nestedManipulator.deleteNode(typeNode, true);
             }
 
             nestedManipulator.saveFile();
