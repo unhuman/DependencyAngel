@@ -31,9 +31,10 @@ public class PomManipulator {
     public static final String DEPENDENCY_TAG = "dependency";
     public static final String GROUP_ID_TAG = "groupId";
     public static final String ARTIFACT_ID_TAG = "artifactId";
-    public static final String VERSION_TAG = "version";
-    public static final String TYPE_TAG = "type";
+    public static final String CLASSIFIER_TAG = "classifier";
     public static final String SCOPE_TAG = "scope";
+    public static final String TYPE_TAG = "type";
+    public static final String VERSION_TAG = "version";
     private static final String EXCLUSIONS_TAG = "exclusions";
     private static final String EXCLUSION_TAG = "exclusion";
 
@@ -242,16 +243,27 @@ public class PomManipulator {
     }
 
     /**
+     *
+     * @param dependency
+     * @return
+     */
+    public boolean updateExplicitVersion(Dependency dependency) {
+        return updateExplicitVersion(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
+                dependency.getVersion(), dependency.getScope(), dependency.getClassifier());
+    }
+
+    /**
      * Updates an existing node
      * @param groupId
      * @param artifactId
      * @param type
      * @param version
      * @param scope
+     * @param classifier
      * @return true if an existing node was found (not necessarily updated)
      */
     public boolean updateExplicitVersion(String groupId, String artifactId, String type,
-                                         Version version, String scope) {
+                                         Version version, String scope, String classifier) {
         List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
 
         // Don't allow a value of a version to be a lookup (probably of itself)
@@ -287,24 +299,38 @@ public class PomManipulator {
                 }
 
                 // TODO: Handle missing version - shouldn't be an issue
-                Node typeNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, TYPE_TAG);
-                if (typeNode != null) {
-                    if (type != null) {
-                        typeNode.setTextContent(type);
-                    } else {
-                        // delete the scope
-                        deleteNode(typeNode, true);
+
+                {
+                    Node typeNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, TYPE_TAG);
+                    if (typeNode != null) {
+                        if (type != null) {
+                            typeNode.setTextContent(type);
+                        } else {
+                            // delete the scope
+                            deleteNode(typeNode, true);
+                        }
                     }
                 }
-
-
-                Node scopeNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, SCOPE_TAG);
-                if (scopeNode != null) {
-                    if (scope != null) {
-                        scopeNode.setTextContent(scope);
-                    } else {
-                        // delete the scope
-                        deleteNode(scopeNode, true);
+                {
+                    Node scopeNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, SCOPE_TAG);
+                    if (scopeNode != null) {
+                        if (scope != null) {
+                            scopeNode.setTextContent(scope);
+                        } else {
+                            // delete the scope
+                            deleteNode(scopeNode, true);
+                        }
+                    }
+                }
+                {
+                    Node classifierNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, CLASSIFIER_TAG);
+                    if (classifierNode != null) {
+                        if (classifier != null) {
+                            classifierNode.setTextContent(classifier);
+                        } else {
+                            // delete the classifier
+                            deleteNode(classifierNode, true);
+                        }
                     }
                 }
             }
@@ -314,16 +340,20 @@ public class PomManipulator {
         return foundExistingNode;
     }
 
-    public Node getDependencesNode() {
-        return dependenciesNode;
+    public void addDependencyNode(Dependency dependency) {
+        addDependencyNode(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
+                dependency.getVersion(), dependency.getScope(), dependency.getClassifier());
     }
 
-    public void addDependencyNode(String groupId, String artifactId, String type, Version version, String scope) {
+
+    public void addDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
+                                  String classifier) {
         dirty = true;
-        addDependencyNode(groupId, artifactId, type, version, scope, false);
+        addDependencyNode(groupId, artifactId, type, version, scope, classifier, false);
     }
 
-    public void addForcedDependencyNode(String groupId, String artifactId, String type, Version version, String scope) {
+    public void addForcedDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
+                                        String classifier) {
         dirty = true;
 
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation),
@@ -331,24 +361,24 @@ public class PomManipulator {
         addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START),
                 dependencyIndentation);
 
-        addDependencyNode(groupId, artifactId, type, version, scope, true);
+        addDependencyNode(groupId, artifactId, type, version, scope, classifier, true);
 
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
         addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END), dependenciesIndentation);
     }
 
     private void addDependencyNode(String groupId, String artifactId, String type, Version version,
-                                   String scope, boolean needAngelComment) {
+                                   String scope, String classifier, boolean needAngelComment) {
         dirty = true;
 
-        Node newDependency = createDependencyNode(groupId, artifactId, type, version, scope, dependencyIndentation,
-                needAngelComment);
+        Node newDependency = createDependencyNode(groupId, artifactId, type, version, scope, classifier,
+                dependencyIndentation, needAngelComment);
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
         addLastChild(dependenciesNode, newDependency, dependenciesIndentation);
     }
 
     private Node createDependencyNode(String groupId, String artifactId, String type, Version version,
-                                      String scope, String indentation, boolean needAngelComment) {
+                                      String scope, String classifier, String indentation, boolean needAngelComment) {
         Node newDependency = document.createElement(DEPENDENCY_TAG);
 
         String contentIndentation = indentation + nestedIndentation;
@@ -363,7 +393,7 @@ public class PomManipulator {
         artifactNode.setTextContent(artifactId);
         newDependency.appendChild(artifactNode);
 
-        if (type != null) {
+        if (type != null && !type.isBlank()) {
             newDependency.appendChild(document.createTextNode(contentIndentation));
             Node typeNode = document.createElement(TYPE_TAG);
             typeNode.setTextContent(type);
@@ -378,16 +408,27 @@ public class PomManipulator {
             newDependency.appendChild(versionNode);
         }
 
-        if (scope != null) {
+        if (scope != null && !scope.isBlank()) {
             newDependency.appendChild(document.createTextNode(contentIndentation));
             Node scopeNode = document.createElement(SCOPE_TAG);
             scopeNode.setTextContent(scope);
             newDependency.appendChild(scopeNode);
         }
 
+        if (classifier != null && !classifier.isBlank()) {
+            newDependency.appendChild(document.createTextNode(contentIndentation));
+            Node classifierNode = document.createElement(CLASSIFIER_TAG);
+            classifierNode.setTextContent(classifier);
+            newDependency.appendChild(classifierNode);
+        }
+
         // add an indentation to the end of the last element so the closing element looks correct
         newDependency.appendChild(document.createTextNode(indentation));
         return newDependency;
+    }
+
+    public Node getDependencesNode() {
+        return dependenciesNode;
     }
 
     public void stripExclusions(DependencyAngelConfig config) {

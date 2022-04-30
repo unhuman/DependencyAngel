@@ -123,7 +123,7 @@ public class DependencyAngelConfig {
                 String[] items = data.split("[,]+");
                 for (String item : items) {
                     String[] parts = item.split(":");
-                    Dependency dependency = new Dependency(parts[0], parts[1], null, null, null);
+                    Dependency dependency = new Dependency(parts[0], parts[1]);
                     dependencies.add(dependency);
                 }
             } catch (Exception e) {

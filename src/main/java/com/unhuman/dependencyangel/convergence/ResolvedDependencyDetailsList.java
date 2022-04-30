@@ -109,6 +109,22 @@ public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyD
         return type;
     }
 
+    /**
+     * Gets the type of all the nested children, or null if not consistent
+     * @return
+     */
+    public String getResolvedClassifier() {
+        String type = null;
+        for (ResolvedDependencyDetails resolvedDependencyDetails: this) {
+            if (type == null) {
+                type = resolvedDependencyDetails.getResolvedClassifier();
+            } else if (!type.equals(resolvedDependencyDetails.getResolvedClassifier())) {
+                return null;
+            }
+        }
+        return type;
+    }
+
     public String getGroup() {
         return this.get(0).get(0).getGroup();
     }

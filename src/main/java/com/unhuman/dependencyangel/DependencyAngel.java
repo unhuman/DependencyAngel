@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 
 import static com.unhuman.dependencyangel.convergence.ConvergenceParser.CONVERGE_ERROR;
 import static com.unhuman.dependencyangel.pom.PomManipulator.ARTIFACT_ID_TAG;
+import static com.unhuman.dependencyangel.pom.PomManipulator.CLASSIFIER_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.DEPENDENCY_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.GROUP_ID_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.PROPERTIES_VERSION;
@@ -173,6 +174,10 @@ public class DependencyAngel {
                     }
                     version = (versionText != null) ? new Version(versionText) : null;
                 }
+
+                Node classifierNode = nestedManipulator.getSingleNodeElement(dependencyNode, CLASSIFIER_TAG, false);
+                String classifier = (classifierNode != null) ? classifierNode.getTextContent() : null;
+
                 Node scopeNode = nestedManipulator.getSingleNodeElement(dependencyNode, SCOPE_TAG, false);
                 String scope = (scopeNode != null) ? scopeNode.getTextContent() : null;
 
@@ -185,14 +190,16 @@ public class DependencyAngel {
                 }
 
                 // Create a dependency to update info and remove related child nodes from the document
-                Dependency dependency = new Dependency(groupId, artifactId, type, version, scope);
+                Dependency dependency = new Dependency(groupId, artifactId, type, version, scope, classifier);
 
                 dependenciesToManage.add(dependency);
 
+                nestedManipulator.deleteNode(typeNode, true);
                 nestedManipulator.deleteNode(versionNode, true);
                 nestedManipulator.deleteNode(versionPropertyNode, true);
+                // We don't delete scope or classifier
                 //nestedManipulator.deleteNode(scopeNode, true);
-                nestedManipulator.deleteNode(typeNode, true);
+                //nestedManipulator.deleteNode(classifierNode, true);
             }
 
             nestedManipulator.saveFile();
@@ -201,11 +208,8 @@ public class DependencyAngel {
         // Now update the parent pom to have all the dependencies
         for (Dependency dependency: dependenciesToManage) {
             // Add or Update (handling version) the dependency
-            if (!parentPomManipulator.updateExplicitVersion(
-                    dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
-                    dependency.getVersion(), dependency.getScope())) {
-                parentPomManipulator.addDependencyNode(dependency.getGroup(), dependency.getArtifact(),
-                        dependency.getType(), dependency.getVersion(), dependency.getScope());
+            if (!parentPomManipulator.updateExplicitVersion(dependency)) {
+                parentPomManipulator.addDependencyNode(dependency);
             }
         }
         parentPomManipulator.saveFile();
@@ -299,8 +303,6 @@ public class DependencyAngel {
         // Update dependencies
         for (ResolvedDependencyDetailsList workItem: workList) {
             // Determine the required scope and version
-            String explicitDependencyScope = (workItem.getResolvedScope() != null)
-                    ? workItem.getResolvedScope() : "compile";
             Version explicitVersion = (workItem.getLatestVersion());
 
             boolean needsExplicitDependency = true;
@@ -311,8 +313,8 @@ public class DependencyAngel {
                     pomManipulator.updateExplicitVersion(
                             workDependency.getInitialDependency().getGroup(),
                             workDependency.getInitialDependency().getArtifact(),
-                            workItem.getResolvedType(),
-                            workItem.getLatestVersion(), explicitDependencyScope);
+                            workItem.getResolvedType(), workItem.getLatestVersion(),
+                            workItem.getResolvedScope(), workItem.getResolvedClassifier());
                 }
                 if (workDependency.needsExclusion(explicitVersion)) {
                     // exclude the dependency
@@ -325,7 +327,8 @@ public class DependencyAngel {
 
             if (needsExplicitDependency) {
                 pomManipulator.addForcedDependencyNode(workItem.getGroup(), workItem.getArtifact(),
-                        workItem.getResolvedType(), workItem.getLatestVersion(), explicitDependencyScope);
+                        workItem.getResolvedType(), workItem.getLatestVersion(), workItem.getResolvedScope(),
+                        workItem.getResolvedClassifier());
             }
         }
 

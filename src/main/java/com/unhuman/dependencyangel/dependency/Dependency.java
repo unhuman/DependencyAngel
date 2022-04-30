@@ -5,11 +5,14 @@ import com.unhuman.dependencyangel.versioning.Version;
 public class Dependency {
     private String group;
     private String artifact;
+    private String classifier;
+    private String scope;
     private String type;
     private Version version;
-    private String scope;
+
 
     public Dependency(String data) {
+        classifier = null;
         String[] details = data.split(":");
 
         if (details.length == 3) {
@@ -35,12 +38,18 @@ public class Dependency {
     protected Dependency(Dependency dependency) {
         this.group = dependency.getGroup();
         this.artifact = dependency.getArtifact();
+        this.classifier = dependency.getClassifier();
         this.type = dependency.getType();
-        this.version = dependency.getVersion();
         this.scope = dependency.getScope();
+        this.version = dependency.getVersion();
     }
 
-    public Dependency(String groupId, String artifactId, String type, Version version, String scope) {
+    public Dependency(String groupId, String artifactId) {
+        this(groupId, artifactId, null, null, null, null);
+    }
+
+    public Dependency(String groupId, String artifactId, String type, Version version,
+                      String scope, String classifier) {
         if (groupId == null || groupId.isBlank()) {
             throw new RuntimeException("Missing dependency groupId");
         }
@@ -52,6 +61,7 @@ public class Dependency {
         this.type = type;
         this.version = version;
         this.scope = scope;
+        this.classifier = classifier;
     }
 
     public String getGroup() {
@@ -80,6 +90,10 @@ public class Dependency {
 
     protected void setScope(String newScope) {
         this.scope = newScope;
+    }
+
+    public String getClassifier() {
+        return classifier;
     }
 
     public boolean matchingArtifact(Dependency other) {

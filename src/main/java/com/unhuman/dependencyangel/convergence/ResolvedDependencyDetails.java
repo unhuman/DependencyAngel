@@ -64,6 +64,18 @@ public class ResolvedDependencyDetails extends ArrayList<Dependency> {
         return scope;
     }
 
+    public String getResolvedClassifier() {
+        String classifier = null;
+        for (Dependency data: this) {
+            if (classifier == null) {
+                classifier = data.getClassifier();
+            } else if (!classifier.equals(data.getClassifier())) {
+                return null;
+            }
+        }
+        return classifier;
+    }
+
     public Version getLatestVersion() {
         Version version = null;
         for (Dependency data: this) {
