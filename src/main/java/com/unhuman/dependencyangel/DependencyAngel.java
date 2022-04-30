@@ -342,7 +342,7 @@ public class DependencyAngel {
         } else {
             while (true) {
                 try {
-                    System.out.print("This is destructive - are you sure you want to continue (y/n)?: ");
+                    System.out.print("This is destructive - are you sure you want to continue (y/N)?: ");
                     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
                     String value = reader.readLine().toLowerCase();
 
@@ -352,7 +352,7 @@ public class DependencyAngel {
                         break;
                     }
 
-                    if (value.matches("no?")) {
+                    if (value.isBlank() || value.matches("no?")) {
                         exit(0);
                     }
                 } catch (IOException e) { }
