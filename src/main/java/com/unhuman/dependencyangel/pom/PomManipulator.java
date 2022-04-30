@@ -255,7 +255,7 @@ public class PomManipulator {
         List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
 
         // Don't allow a value of a version to be a lookup (probably of itself)
-        boolean skipVersion = PROPERTIES_VERSION.matcher(version.toString()).matches();
+        boolean skipVersion = (version != null) ? PROPERTIES_VERSION.matcher(version.toString()).matches() : true;
 
         boolean foundExistingNode = false;
         for (Node dependencyNode: dependencyNodes) {
