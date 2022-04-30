@@ -2,6 +2,7 @@ package com.unhuman.dependencyangel;
 
 import com.unhuman.dependencyangel.dependency.Dependency;
 import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
@@ -40,23 +41,24 @@ public class DependencyAngelConfig {
                         "This is a destructive process.  Have backups!");
         parser.addArgument("-b", "--banned")
                 .type(String.class)
+                .metavar("<groupId:artifactId,...>")
                 .required(false)
-                .help("List of banned dependencies (artifactId:groupId).  Processing preserves exclusions.");
+                .help("Banned dependencies.  Processing preserves exclusions.");
         parser.addArgument("-c", "--cleanOnly")
                 .type(Boolean.class)
                 .required(false)
-                .setDefault(false)
+                .action(Arguments.storeTrue())
                 .help("Perform clean up only (cannot be used with noClean).  For process mode.");
         parser.addArgument("-d", "--displayExecutionOutput")
                 .type(Boolean.class)
                 .required(false)
-                .setDefault(false)
+                .action(Arguments.storeTrue())
                 .help("Display external process execution output.");
         parser.addArgument("-e", "--env")
                 .type(String.class)
-                .metavar("<groupId:artifactId,...>")
+                .metavar("<key:value,...>")
                 .required(false)
-                .help("Specify environment variables (comma separated, k=v pairs).  For process mode.");
+                .help("Specify environment variables.  For process mode.");
         parser.addArgument("-m", "--mode")
                 .type(Mode.class)
                 .required(false)
@@ -65,16 +67,17 @@ public class DependencyAngelConfig {
         parser.addArgument("-n", "--noClean")
                 .type(Boolean.class)
                 .required(false)
+                .action(Arguments.storeTrue())
                 .setDefault(false)
                 .help("Skips clean step (cannot be use with cleanOnly).");
         parser.addArgument("-p", "--preserveExclusions")
                 .type(String.class)
                 .metavar("<groupId:artifactId,...>")
                 .required(false)
-                .help("List of existing exclusions to explicitly preserve.");
+                .help("Existing exclusions to preserve.");
         parser.addArgument("-s", "--skipPrompts")
                 .type(Boolean.class)
-                .setDefault(false)
+                .action(Arguments.storeTrue())
                 .help("Specify to skip any prompts.");
         parser.addArgument("directory")
                 .type(String.class)
