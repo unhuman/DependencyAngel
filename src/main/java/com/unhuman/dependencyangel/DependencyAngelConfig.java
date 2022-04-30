@@ -54,6 +54,7 @@ public class DependencyAngelConfig {
                 .help("Display external process execution output.");
         parser.addArgument("-e", "--env")
                 .type(String.class)
+                .metavar("<groupId:artifactId,...>")
                 .required(false)
                 .help("Specify environment variables (comma separated, k=v pairs).  For process mode.");
         parser.addArgument("-m", "--mode")
@@ -68,6 +69,7 @@ public class DependencyAngelConfig {
                 .help("Skips clean step (cannot be use with cleanOnly).");
         parser.addArgument("-p", "--preserveExclusions")
                 .type(String.class)
+                .metavar("<groupId:artifactId,...>")
                 .required(false)
                 .help("List of existing exclusions to explicitly preserve.");
         parser.addArgument("-s", "--skipPrompts")
