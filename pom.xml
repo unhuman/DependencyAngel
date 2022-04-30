@@ -85,9 +85,6 @@
                                 </transformer>
                             </transformers>
                             <artifactSet/>
-                            <outputFile>
-                                ${project.build.directory}/${project.artifactId}-${project.version}-shade.jar
-                            </outputFile>
                         </configuration>
                     </execution>
                 </executions>
