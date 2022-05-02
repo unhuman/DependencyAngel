@@ -78,14 +78,14 @@ public class ConvergenceParser {
                 mode = Mode.PROCESS_CHILDREN;
                 break;
             case PROCESS_CHILDREN:
-                // Check if we found a blank line (end of this conflict)
-                if (line.isBlank()) {
+                // Check if we found a blank line, closing bracket (end of this conflict)
+                if (line.isBlank() || line.trim().equals("]")) {
                     mode = Mode.LOOKING;
                     break;
                 }
 
-                // Check if we found an "and" line
-                if (AND_LINE.equals(line)) {
+                // Check if we found an "and" (and or comma) line
+                if (AND_LINE.equals(line)|| line.trim().equals(",") ) {
                     mode = Mode.FOUND_DEPENDENCY;
                     break;
                 }
