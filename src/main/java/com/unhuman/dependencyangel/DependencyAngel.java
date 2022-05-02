@@ -125,12 +125,22 @@ public class DependencyAngel {
 
         // Create a manipulator for the parent pom, so we can validate it correctly
         PomManipulator parentPomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
+
+        // Determine nested poms
+        List<File> nestedPoms = findChildPomFiles(config.getDirectory(), config.getDirectory());
+
+        // nothing (more) to do if no nested poms
+        if (nestedPoms.size() == 0) {
+            return;
+        }
+
+        // When we have child poms, we require dependencyManagement section be created
+        // TODO: We could create this programmatically
         if (!parentPomManipulator.hasDependencyManagement()) {
             throw new RuntimeException("Parent pom missing dependencyManagement (note: optional properties).");
         }
 
         // build up a list of subdirectories with pom.xml in them
-        List<File> nestedPoms = findChildPomFiles(config.getDirectory(), config.getDirectory());
         for (File nestedPom: nestedPoms) {
             performPomCleanup(nestedPom.getAbsolutePath());
         }
