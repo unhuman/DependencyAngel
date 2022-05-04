@@ -433,16 +433,19 @@ public class PomManipulator {
 
     public void stripExclusions(DependencyAngelConfig config) {
         // preserved exclusions and banned dependencies are both treated the same (skip existing exclusions)
-        List<Dependency> skipDependencyExclusions = config.getPreserveExclusions();
+        List<Dependency> skipDependencyExclusions = new ArrayList<>(
+                config.getBannedDependencies().size() + config.getPreserveExclusions().size());
         skipDependencyExclusions.addAll(config.getBannedDependencies());
+        skipDependencyExclusions.addAll(config.getPreserveExclusions());
 
         // only strip exclusions whose parent node is a dependency
-        NodeList exclusionsNodes = document.getElementsByTagName(EXCLUSIONS_TAG);
-        for (int i = 0; i < exclusionsNodes.getLength(); i++) {
+        List<Node> exclusionsNodes = convertNodeListToList(document.getElementsByTagName(EXCLUSIONS_TAG));
+
+        for (Node exclusionsNode: exclusionsNodes) {
             boolean deleteExclusionsNode = true;
 
-            if (exclusionsNodes.item(i).getParentNode().getNodeName().equals(DEPENDENCY_TAG)) {
-                List<Node> exclusionNodes = findChildNodes(exclusionsNodes.item(i), Node.ELEMENT_NODE, EXCLUSION_TAG);
+            if (exclusionsNode.getParentNode().getNodeName().equals(DEPENDENCY_TAG)) {
+                List<Node> exclusionNodes = findChildNodes(exclusionsNode, Node.ELEMENT_NODE, EXCLUSION_TAG);
                 for (Node exclusionNode: exclusionNodes) {
                     String groupId = getSingleNodeElement(exclusionNode, GROUP_ID_TAG, true)
                             .getTextContent();
@@ -467,7 +470,7 @@ public class PomManipulator {
 
             // Only delete the exclusions node if we deleted all the nested exclusions within
             if (deleteExclusionsNode) {
-                deleteNode(exclusionsNodes.item(i), true);
+                deleteNode(exclusionsNode, true);
             }
         }
     }
@@ -517,17 +520,6 @@ public class PomManipulator {
 
         if (deleting) {
             throw new RuntimeException("Missing Forced Dependency End comment tag");
-        }
-    }
-
-    protected void stripNodes(String nodeId, String validateParentNodeName) {
-        NodeList exclusionNodes = document.getElementsByTagName(nodeId);
-        for (int i = 0; i < exclusionNodes.getLength(); i++) {
-            if (validateParentNodeName == null ||
-                    exclusionNodes.item(i).getParentNode().getNodeName().equals(validateParentNodeName)) {
-                deleteNode(exclusionNodes.item(i), true);
-                dirty = true;
-            }
         }
     }
 
@@ -594,6 +586,21 @@ public class PomManipulator {
         }
         return String.format("${%s}", key);
     }
+
+    /**
+     * Convert a NodeList to a List<Node>
+     * The reason why you would want to do this is that NodeList changes when you delete items from the document.
+     * @param nodeList
+     * @return
+     */
+    private List<Node> convertNodeListToList(NodeList nodeList) {
+        List<Node> nodes = new ArrayList<>(nodeList.getLength());
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            nodes.add(nodeList.item(i));
+        }
+        return nodes;
+    }
+
     public void saveFile() {
         // only save if something changed
         if (!dirty) {

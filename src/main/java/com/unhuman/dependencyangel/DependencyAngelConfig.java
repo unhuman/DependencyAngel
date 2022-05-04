@@ -8,6 +8,7 @@ import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -163,11 +164,11 @@ public class DependencyAngelConfig {
     }
 
     public List<Dependency> getBannedDependencies() {
-        return bannedDependencies;
+        return Collections.unmodifiableList(bannedDependencies);
     }
 
     public List<Dependency> getPreserveExclusions() {
-        return preserveExclusions;
+        return Collections.unmodifiableList(preserveExclusions);
     }
 
     protected static Map<String, String> getEnvParameterMap(String env) {
