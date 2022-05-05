@@ -16,7 +16,9 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -433,10 +435,10 @@ public class PomManipulator {
 
     public void stripExclusions(DependencyAngelConfig config) {
         // preserved exclusions and banned dependencies are both treated the same (skip existing exclusions)
-        List<Dependency> skipDependencyExclusions = new ArrayList<>(
+        Set<String> preserveExclusions = new HashSet<>(
                 config.getBannedDependencies().size() + config.getPreserveExclusions().size());
-        skipDependencyExclusions.addAll(config.getBannedDependencies());
-        skipDependencyExclusions.addAll(config.getPreserveExclusions());
+        preserveExclusions.addAll(config.getBannedDependencies());
+        preserveExclusions.addAll(config.getPreserveExclusions());
 
         // only strip exclusions whose parent node is a dependency
         List<Node> exclusionsNodes = convertNodeListToList(document.getElementsByTagName(EXCLUSIONS_TAG));
@@ -452,18 +454,10 @@ public class PomManipulator {
                     String artifactId = getSingleNodeElement(exclusionNode, ARTIFACT_ID_TAG, true)
                             .getTextContent();
 
-                    // don't delete banned exclusions
-                    boolean keptExclusion = false;
-                    for (Dependency skipExclusion : skipDependencyExclusions) {
-                        if (skipExclusion.getGroup().equals(groupId) && skipExclusion.getArtifact().equals(artifactId)) {
-                            keptExclusion = true;
-                            // We found a banned dependency, so we need to keep the exclusions parent
-                            deleteExclusionsNode = false;
-                            break;
-                        }
-                    }
-                    if (!keptExclusion) {
+                    if (!preserveExclusions.contains(String.format("%s:%s", groupId, artifactId))) {
                         deleteNode(exclusionNode, true);
+                    } else {
+                        deleteExclusionsNode = false;
                     }
                 }
             }

@@ -1,25 +1,19 @@
 package com.unhuman.dependencyangel;
 
-import com.unhuman.dependencyangel.dependency.Dependency;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-public class DependencyAngelConfig {
+public class DependencyAngelConfig extends StorableAngelConfigData {
     public enum Mode { SetupDependencyManagement, Process }
 
     private String directory;
     private Map<String, String> environmentVars;
-    private List<Dependency> bannedDependencies;
-    private List<Dependency> preserveExclusions;
     private boolean skipPrompts;
     private boolean cleanOnly;
     private boolean noClean;
@@ -27,14 +21,13 @@ public class DependencyAngelConfig {
     private Mode mode;
 
     public DependencyAngelConfig(String[] args) {
+        super();
         this.directory = null;
         this.environmentVars = new HashMap<>();
         this.skipPrompts = false;
         this.cleanOnly = false;
         this.noClean = false;
         this.mode = Mode.Process;
-        this.bannedDependencies = new ArrayList<>();
-        this.preserveExclusions = new ArrayList<>();
 
         ArgumentParser parser = ArgumentParsers.newFor(DependencyAngel.class.getSimpleName()).build()
                 .defaultHelp(true)
@@ -100,8 +93,7 @@ public class DependencyAngelConfig {
             mode = ns.get("mode");
             displayExecutionOutput = ns.get("displayExecutionOutput");
 
-            bannedDependencies = getDependenciesList(ns, "banned");
-            preserveExclusions = getDependenciesList(ns, "preserveExclusions");
+            super.setup(ns);
         } catch (ArgumentParserException e) {
             parser.handleError(e);
             System.exit(1);
@@ -115,25 +107,6 @@ public class DependencyAngelConfig {
             throw new RuntimeException("cleanOnly and setupDependencyManagement cannot be provided together");
         }
     }
-
-    private List<Dependency> getDependenciesList(Namespace ns, String itemExtract) {
-        String data = ns.getString(itemExtract);
-        List<Dependency> dependencies = new ArrayList<>();
-        if (data != null) {
-            try {
-                String[] items = data.split("[,]+");
-                for (String item : items) {
-                    String[] parts = item.split(":");
-                    Dependency dependency = new Dependency(parts[0], parts[1]);
-                    dependencies.add(dependency);
-                }
-            } catch (Exception e) {
-                throw new RuntimeException("Invalid config item: " + itemExtract + " - " + data);
-            }
-        }
-        return dependencies;
-    }
-
 
     public String getDirectory() {
         return directory;
@@ -161,14 +134,6 @@ public class DependencyAngelConfig {
 
     public Mode getMode() {
         return mode;
-    }
-
-    public List<Dependency> getBannedDependencies() {
-        return Collections.unmodifiableList(bannedDependencies);
-    }
-
-    public List<Dependency> getPreserveExclusions() {
-        return Collections.unmodifiableList(preserveExclusions);
     }
 
     protected static Map<String, String> getEnvParameterMap(String env) {

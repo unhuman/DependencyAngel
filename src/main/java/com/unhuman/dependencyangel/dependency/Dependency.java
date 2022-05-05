@@ -10,7 +10,6 @@ public class Dependency {
     private String type;
     private Version version;
 
-
     public Dependency(String data) {
         classifier = null;
         String[] details = data.split(":");
@@ -87,7 +86,6 @@ public class Dependency {
     public String getScope() {
         return scope;
     }
-
     protected void setScope(String newScope) {
         this.scope = newScope;
     }
