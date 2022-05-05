@@ -93,7 +93,7 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
             mode = ns.get("mode");
             displayExecutionOutput = ns.get("displayExecutionOutput");
 
-            super.setup(ns);
+            super.setup(ns, directory);
         } catch (ArgumentParserException e) {
             parser.handleError(e);
             System.exit(1);

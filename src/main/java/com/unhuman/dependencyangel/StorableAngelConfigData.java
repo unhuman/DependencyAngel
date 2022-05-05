@@ -1,12 +1,16 @@
 package com.unhuman.dependencyangel;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.sourceforge.argparse4j.inf.Namespace;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 public class StorableAngelConfigData {
+    private static final String ANGEL_CONFIG_FILE = ".angel.conf";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private Set<String> bannedDependencies;
     private Set<String> preserveExclusions;
 
@@ -15,9 +19,23 @@ public class StorableAngelConfigData {
         this.preserveExclusions = Collections.emptySet();
     }
 
-    protected void setup(Namespace ns) {
+    private StorableAngelConfigData(StorableAngelConfigData copy) {
+        this.bannedDependencies = copy.bannedDependencies;
+        this.preserveExclusions = copy.preserveExclusions;
+    }
+
+    protected void setup(Namespace ns, String projectDirectory) {
         bannedDependencies = getDependenciesSet(ns, "banned");
         preserveExclusions = getDependenciesSet(ns, "preserveExclusions");
+
+        StorableAngelConfigData fileConfig = loadConfig(projectDirectory);
+        if (fileConfig != null) {
+            bannedDependencies.addAll(fileConfig.getBannedDependencies());
+            preserveExclusions.addAll(fileConfig.getPreserveExclusions());
+        }
+
+        // TODO: Only update if there's a change
+        writeConfig(projectDirectory);
     }
 
     public Set<String> getBannedDependencies() {
@@ -43,5 +61,39 @@ public class StorableAngelConfigData {
             }
         }
         return dependencies;
+    }
+
+    public void writeConfig(String projectDirectory) {
+        String configFilePath = getConfigFilePath(projectDirectory);
+        try {
+            // Ensure we only write the data in this object
+            StorableAngelConfigData writeData = new StorableAngelConfigData(this);
+            OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(new File(configFilePath), writeData);
+        } catch (Exception e) {
+            System.out.println("Could not write config: " + configFilePath + ": " + e.getMessage());
+        }
+    }
+
+    public static StorableAngelConfigData loadConfig(String projectDirectory) {
+        String configFilePath = getConfigFilePath(projectDirectory);
+        try {
+            File configFile = new File(configFilePath);
+            if (!configFile.exists()) {
+                return null;
+            }
+            if (!configFile.isFile()) {
+                throw new RuntimeException("Config file is not a file: " + configFile.getCanonicalPath());
+            }
+
+            StorableAngelConfigData item = OBJECT_MAPPER.readValue(configFile, StorableAngelConfigData.class);
+            return item;
+        } catch (Exception e) {
+            System.out.println("Could not load config: " + configFilePath + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    private static String getConfigFilePath(String projectDirectory) {
+        return projectDirectory + File.separatorChar + ANGEL_CONFIG_FILE;
     }
 }
