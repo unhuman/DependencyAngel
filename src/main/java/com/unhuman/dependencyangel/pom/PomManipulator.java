@@ -77,14 +77,14 @@ public class PomManipulator {
                 dependenciesIndentation = findNodeIndentation(dependenciesNode);
 
                 // Find indentations we need to use for child nodes
-                List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+                List<Node> dependencyNodes = findChildElements(dependenciesNode, DEPENDENCY_TAG);
                 Node groupIdNode = null;
                 if (dependencyNodes.size() > 0) {
                     Node dependencyNode = dependencyNodes.get(0);
                     if (dependencyIndentation == null) {
                         dependencyIndentation = findNodeIndentation(dependencyNode);
                     }
-                    groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
+                    groupIdNode = findChildElement(dependencyNode, GROUP_ID_TAG);
                 }
                 if (groupIdNode != null) {
                     if (dependencyContentIndentation == null) {
@@ -117,20 +117,20 @@ public class PomManipulator {
         return acceptableNode;
     }
 
-    public List<Node> findChildNodes(Node parentNode, short nodeType, String nodeName) {
+    public List<Node> findChildElements(Node parentNode, String nodeName) {
         List<Node> nodes = new ArrayList<>();
         NodeList childNodeList = parentNode.getChildNodes();
         for (int i = 0; i < childNodeList.getLength(); i++) {
             Node childNodeCheck = childNodeList.item(i);
-            if (childNodeCheck.getNodeType() == nodeType && childNodeCheck.getNodeName().equals(nodeName)) {
+            if (childNodeCheck.getNodeType() == Node.ELEMENT_NODE && childNodeCheck.getNodeName().equals(nodeName)) {
                 nodes.add(childNodeCheck);
             }
         }
         return nodes;
     }
 
-    Node findChildNode(Node parentNode, short nodeType, String nodeName) {
-        List<Node> nodes = findChildNodes(parentNode, nodeType, nodeName);
+    Node findChildElement(Node parentNode, String nodeName) {
+        List<Node> nodes = findChildElements(parentNode, nodeName);
         switch (nodes.size()) {
             case 0:
                 return null;
@@ -159,7 +159,7 @@ public class PomManipulator {
     }
 
     public Node getSingleNodeElement(Node parentNode, String itemDesired, boolean required) {
-        List<Node> foundNodes = findChildNodes(parentNode, Node.ELEMENT_NODE, itemDesired);
+        List<Node> foundNodes = findChildElements(parentNode, itemDesired);
         if (foundNodes.size() == 0) {
             if (required) {
                 throw new RuntimeException("Could not find expected required element: " + itemDesired);
@@ -186,17 +186,17 @@ public class PomManipulator {
                              String exclusionGroupId, String exclusionArtifactId) {
         dirty = true;
 
-        List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+        List<Node> dependencyNodes = findChildElements(dependenciesNode, DEPENDENCY_TAG);
         for (Node dependencyNode: dependencyNodes) {
-            Node groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
-            Node artifactIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, ARTIFACT_ID_TAG);
+            Node groupIdNode = findChildElement(dependencyNode, GROUP_ID_TAG);
+            Node artifactIdNode = findChildElement(dependencyNode, ARTIFACT_ID_TAG);
 
             String exclusionsIndent = findNodeIndentation(groupIdNode);
 
             if (parentGroupId.equals(groupIdNode.getTextContent())
                     && parentArtifactId.equals(artifactIdNode.getTextContent())) {
                 // either find or create an <exclusions> node
-                Node exclusionsNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, EXCLUSIONS_TAG);
+                Node exclusionsNode = findChildElement(dependencyNode, EXCLUSIONS_TAG);
                 if (exclusionsNode == null) {
                     exclusionsNode = document.createElement(EXCLUSIONS_TAG);
 
@@ -269,15 +269,15 @@ public class PomManipulator {
     public boolean updateExplicitVersion(String groupId, String artifactId, String type,
                                          Version version, String scope, String classifier,
                                          List<Dependency> exclusions) {
-        List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+        List<Node> dependencyNodes = findChildElements(dependenciesNode, DEPENDENCY_TAG);
 
         // Don't allow a value of a version to be a lookup (probably of itself)
         boolean skipVersion = (version != null) ? PROPERTIES_VERSION.matcher(version.toString()).matches() : true;
 
         boolean foundExistingNode = false;
         for (Node dependencyNode: dependencyNodes) {
-            Node groupIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
-            Node artifactIdNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, ARTIFACT_ID_TAG);
+            Node groupIdNode = findChildElement(dependencyNode, GROUP_ID_TAG);
+            Node artifactIdNode = findChildElement(dependencyNode, ARTIFACT_ID_TAG);
 
             // TODO: When we overwrite a version explicitly, let's choose latest version
 
@@ -285,7 +285,7 @@ public class PomManipulator {
                     && artifactId.equals(artifactIdNode.getTextContent())) {
                 foundExistingNode = true;
                 if (!skipVersion) {
-                    Node versionNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, VERSION_TAG);
+                    Node versionNode = findChildElement(dependencyNode, VERSION_TAG);
                     if (versionNode != null) {
                         String priorVersion = versionNode.getTextContent();
                         Matcher matcher = PROPERTIES_VERSION.matcher(priorVersion);
@@ -306,7 +306,7 @@ public class PomManipulator {
                 // TODO: Handle missing version - shouldn't be an issue
 
                 {
-                    Node typeNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, TYPE_TAG);
+                    Node typeNode = findChildElement(dependencyNode, TYPE_TAG);
                     if (typeNode != null) {
                         if (type != null) {
                             typeNode.setTextContent(type);
@@ -317,7 +317,7 @@ public class PomManipulator {
                     }
                 }
                 {
-                    Node scopeNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, SCOPE_TAG);
+                    Node scopeNode = findChildElement(dependencyNode, SCOPE_TAG);
                     if (scopeNode != null) {
                         if (scope != null) {
                             scopeNode.setTextContent(scope);
@@ -328,7 +328,7 @@ public class PomManipulator {
                     }
                 }
                 {
-                    Node classifierNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, CLASSIFIER_TAG);
+                    Node classifierNode = findChildElement(dependencyNode, CLASSIFIER_TAG);
                     if (classifierNode != null) {
                         if (classifier != null) {
                             classifierNode.setTextContent(classifier);
@@ -449,7 +449,7 @@ public class PomManipulator {
         String exclusionsIndentation = parentIndentation + nestedIndentation;
 
         boolean addedExclusionsNode = false;
-        Node exclusionsNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, EXCLUSIONS_TAG);
+        Node exclusionsNode = findChildElement(dependencyNode, EXCLUSIONS_TAG);
         if (exclusionsNode == null) {
             dependencyNode.appendChild(document.createTextNode(exclusionsIndentation));
             exclusionsNode = document.createElement(EXCLUSIONS_TAG);
@@ -459,10 +459,10 @@ public class PomManipulator {
 
         for (Dependency exclusion : exclusions) {
             boolean foundExclusion = false;
-            List<Node> exclusionNodes = findChildNodes(exclusionsNode, Node.ELEMENT_NODE, EXCLUSION_TAG);
+            List<Node> exclusionNodes = findChildElements(exclusionsNode, EXCLUSION_TAG);
             for (Node existingExclusionNode: exclusionNodes) {
-                Node groupIdNode = findChildNode(existingExclusionNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
-                Node artifactIdNode = findChildNode(existingExclusionNode, Node.ELEMENT_NODE, ARTIFACT_ID_TAG);
+                Node groupIdNode = findChildElement(existingExclusionNode, GROUP_ID_TAG);
+                Node artifactIdNode = findChildElement(existingExclusionNode, ARTIFACT_ID_TAG);
 
                 if (exclusion.getGroup().equals(groupIdNode.getTextContent())
                         && exclusion.getArtifact().equals(artifactIdNode.getTextContent())) {
@@ -519,7 +519,7 @@ public class PomManipulator {
             boolean deleteExclusionsNode = true;
 
             if (exclusionsNode.getParentNode().getNodeName().equals(DEPENDENCY_TAG)) {
-                List<Node> exclusionNodes = findChildNodes(exclusionsNode, Node.ELEMENT_NODE, EXCLUSION_TAG);
+                List<Node> exclusionNodes = findChildElements(exclusionsNode, EXCLUSION_TAG);
                 for (Node exclusionNode: exclusionNodes) {
                     String groupId = getSingleNodeElement(exclusionNode, GROUP_ID_TAG, true)
                             .getTextContent();

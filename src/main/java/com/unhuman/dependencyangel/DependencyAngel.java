@@ -170,8 +170,7 @@ public class DependencyAngel {
                 // nothing to do here
                 continue;
             }
-            List<Node> dependencyNodes = nestedManipulator.findChildNodes(
-                    dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
+            List<Node> dependencyNodes = nestedManipulator.findChildElements(dependenciesNode, DEPENDENCY_TAG);
             for (Node dependencyNode : dependencyNodes) {
                 String groupId = nestedManipulator.getSingleNodeElement(dependencyNode, GROUP_ID_TAG, true)
                         .getTextContent();
@@ -218,7 +217,7 @@ public class DependencyAngel {
                         nestedManipulator.getSingleNodeElement(dependencyNode, EXCLUSIONS_TAG, false);
                 if (exclusionsNode != null) {
                     List<Node> exclusionNodes =
-                            nestedManipulator.findChildNodes(exclusionsNode, Node.ELEMENT_NODE, EXCLUSION_TAG);
+                            nestedManipulator.findChildElements(exclusionsNode, EXCLUSION_TAG);
                     for (Node exclusionNode : exclusionNodes) {
                         String exclusionGroupId = nestedManipulator.getSingleNodeElement
                                 (exclusionNode, GROUP_ID_TAG, true).getTextContent();
