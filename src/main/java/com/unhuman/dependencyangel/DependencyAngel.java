@@ -47,6 +47,8 @@ public class DependencyAngel {
     private static final String MVN_COMMAND = (IS_WINDOWS) ? "mvn.cmd" : "mvn";
     private static final String TEMP_FILE_PREFIX = "dependency-angel-";
     private static final String TEMP_FILE_SUFFIX = ".tmp";
+    public static final Pattern BANNED_ERROR = Pattern.compile(
+            "Found Banned Dependency: (.*?)");
     private static final Pattern GENERATED_EXPECTED_FILE_LINE =
             Pattern.compile(String.format("Wrote dependency tree to:.*%s.*%s",
                     TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX));
@@ -318,7 +320,23 @@ public class DependencyAngel {
 
             // Determine actions to be performed
             ResolvedDependencyDetailsList workToDo = new ResolvedDependencyDetailsList();
+            // Keep track if there's any weird things going on here - self references...
+            // They will need to be handled explicitly
             for (DependencyConflictData data: currentConflict.getConflictHierarchy()) {
+                if (data.getEndDependencyInfo() == null) {
+                    List<String> checkInclusions = new ArrayList<>();
+                    for (DependencyConflictData data2: currentConflict.getConflictHierarchy()) {
+                        if (data2.getEndDependencyInfo() != null) {
+                            checkInclusions.add(String.format("%s:%s",
+                                    data2.getEndDependencyInfo().getInitialDependency().getGroup(),
+                                    data2.getEndDependencyInfo().getInitialDependency().getArtifact()));
+                        }
+                    }
+                    throw new RuntimeException(String.format("Error handling %s:%s - check for dependency loop " +
+                                    "from these inclusions [%s]",
+                            data.getGroup(), data.getArtifact(),
+                            String.join(",", checkInclusions)));
+                }
                 workToDo.add(data.getEndDependencyInfo());
             }
             workList.add(workToDo);

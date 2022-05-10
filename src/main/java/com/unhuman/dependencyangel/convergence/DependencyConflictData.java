@@ -45,13 +45,18 @@ public class DependencyConflictData extends Dependency {
             throw new RuntimeException("Illegal use of this method - top level only");
         }
 
-        if (children.size() != 1) {
-            throw new RuntimeException("Expected only a single child at parent level");
+        DependencyConflictData initialDependency = null;
+        switch (children.size()) {
+            case 0:
+                // This could happen with a circular dependency
+                return null;
+            case 1:
+                initialDependency = children.get(0);
+                // let's find all the dependencies
+                return new ResolvedDependencyDetails(initialDependency, getEndChildren(initialDependency));
+            default:
+                throw new RuntimeException("Expected only a single child at parent level");
         }
-
-        // let's find all the dependencies
-        DependencyConflictData initalDependency = children.get(0);
-        return new ResolvedDependencyDetails(initalDependency, getEndChildren(initalDependency));
     }
 
     private List<Dependency> getEndChildren(DependencyConflictData data) {
