@@ -2,6 +2,9 @@ package com.unhuman.dependencyangel.dependency;
 
 import com.unhuman.dependencyangel.versioning.Version;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Dependency {
     private String group;
     private String artifact;
@@ -9,6 +12,8 @@ public class Dependency {
     private String scope;
     private String type;
     private Version version;
+
+    private List<Dependency> exclusions = new ArrayList<>();
 
     public Dependency(String data) {
         classifier = null;
@@ -100,5 +105,13 @@ public class Dependency {
 
     public String getDisplayName() {
         return String.format("%s:%s", getGroup(), getArtifact());
+    }
+
+    public List<Dependency> getExclusions() {
+        return exclusions;
+    }
+
+    public void setExclusions(List<Dependency> exclusions) {
+        this.exclusions.addAll(exclusions);
     }
 }

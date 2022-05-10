@@ -21,8 +21,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -31,6 +33,8 @@ import static com.unhuman.dependencyangel.convergence.ConvergenceParser.CONVERGE
 import static com.unhuman.dependencyangel.pom.PomManipulator.ARTIFACT_ID_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.CLASSIFIER_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.DEPENDENCY_TAG;
+import static com.unhuman.dependencyangel.pom.PomManipulator.EXCLUSIONS_TAG;
+import static com.unhuman.dependencyangel.pom.PomManipulator.EXCLUSION_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.GROUP_ID_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.PROPERTIES_VERSION;
 import static com.unhuman.dependencyangel.pom.PomManipulator.SCOPE_TAG;
@@ -149,6 +153,13 @@ public class DependencyAngel {
             return;
         }
 
+        // preserved exclusions and banned dependencies are both treated the same (skip existing exclusions)
+        // TODO: this is duplicated in PomManipulator
+        Set<String> preserveExclusions = new HashSet<>(
+                config.getBannedDependencies().size() + config.getPreserveExclusions().size());
+        preserveExclusions.addAll(config.getBannedDependencies());
+        preserveExclusions.addAll(config.getPreserveExclusions());
+
         // in main pom.xml, validate / check dependency management
         List<Dependency> dependenciesToManage = new ArrayList<>();
         for (File nestedPom: nestedPoms) {
@@ -195,21 +206,48 @@ public class DependencyAngel {
                 String type = (typeNode != null) ? typeNode.getTextContent() : null;
 
                 // No version - we don't process this
+                // TODO: we should see if there's a version in parent dependencyManagement already
+                // if there is we can allow this to proceed
                 if (version == null) {
                     continue;
                 }
 
+                // only strip exclusions whose parent node is a dependency
+                List<Dependency> exclusions = new ArrayList<>();
+                Node exclusionsNode =
+                        nestedManipulator.getSingleNodeElement(dependencyNode, EXCLUSIONS_TAG, false);
+                if (exclusionsNode != null) {
+                    List<Node> exclusionNodes =
+                            nestedManipulator.findChildNodes(exclusionsNode, Node.ELEMENT_NODE, EXCLUSION_TAG);
+                    for (Node exclusionNode : exclusionNodes) {
+                        String exclusionGroupId = nestedManipulator.getSingleNodeElement
+                                (exclusionNode, GROUP_ID_TAG, true).getTextContent();
+                        String exclusionArtifactId = nestedManipulator.getSingleNodeElement
+                                (exclusionNode, ARTIFACT_ID_TAG, true).getTextContent();
+                        // This check will not miss if clean has occurred.
+                        if (preserveExclusions.contains(
+                                String.format("%s:%s", exclusionGroupId, exclusionArtifactId))) {
+                            exclusions.add(new Dependency(exclusionGroupId, exclusionArtifactId));
+                        }
+                        // We delete all the exclusions below, so we don't need to do this.
+                        // nestedManipulator.deleteNode(exclusionNode, true);
+                    }
+                }
+                nestedManipulator.deleteNode(exclusionsNode, true);
+
                 // Create a dependency to update info and remove related child nodes from the document
                 Dependency dependency = new Dependency(groupId, artifactId, type, version, scope, classifier);
+                dependency.setExclusions(exclusions);
 
                 dependenciesToManage.add(dependency);
 
                 nestedManipulator.deleteNode(typeNode, true);
                 nestedManipulator.deleteNode(versionNode, true);
                 nestedManipulator.deleteNode(versionPropertyNode, true);
+
                 // We don't delete scope or classifier
-                //nestedManipulator.deleteNode(scopeNode, true);
-                //nestedManipulator.deleteNode(classifierNode, true);
+                // nestedManipulator.deleteNode(scopeNode, true);
+                // nestedManipulator.deleteNode(classifierNode, true);
             }
 
             nestedManipulator.saveFile();
@@ -324,7 +362,7 @@ public class DependencyAngel {
                             workDependency.getInitialDependency().getGroup(),
                             workDependency.getInitialDependency().getArtifact(),
                             workItem.getResolvedType(), workItem.getLatestVersion(),
-                            workItem.getResolvedScope(), workItem.getResolvedClassifier());
+                            workItem.getResolvedScope(), workItem.getResolvedClassifier(), null);
                 }
                 if (workDependency.needsExclusion(explicitVersion)) {
                     // exclude the dependency
@@ -338,7 +376,7 @@ public class DependencyAngel {
             if (needsExplicitDependency) {
                 pomManipulator.addForcedDependencyNode(workItem.getGroup(), workItem.getArtifact(),
                         workItem.getResolvedType(), workItem.getLatestVersion(), workItem.getResolvedScope(),
-                        workItem.getResolvedClassifier());
+                        workItem.getResolvedClassifier(), null);
             }
         }
 

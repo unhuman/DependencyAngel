@@ -27,7 +27,7 @@ public class PomManipulator {
     public static final Pattern PROPERTIES_VERSION = Pattern.compile("\\$\\{(.*)\\}");
     private static final String COMMENT_DEPENDENCY_ANGEL_START = "DependencyAngel Start";
     private static final String COMMENT_DEPENDENCY_ANGEL_END = "DependencyAngel End";
-    private static final String PROPERTIES_TAG = "properties";
+    public static final String PROPERTIES_TAG = "properties";
     public static final String DEPENDENCY_MANAGEMENT_TAG = "dependencyManagement";
     public static final String DEPENDENCIES_TAG = "dependencies";
     public static final String DEPENDENCY_TAG = "dependency";
@@ -37,8 +37,8 @@ public class PomManipulator {
     public static final String SCOPE_TAG = "scope";
     public static final String TYPE_TAG = "type";
     public static final String VERSION_TAG = "version";
-    private static final String EXCLUSIONS_TAG = "exclusions";
-    private static final String EXCLUSION_TAG = "exclusion";
+    public static final String EXCLUSIONS_TAG = "exclusions";
+    public static final String EXCLUSION_TAG = "exclusion";
 
     private String filename;
     private Document document;
@@ -251,7 +251,8 @@ public class PomManipulator {
      */
     public boolean updateExplicitVersion(Dependency dependency) {
         return updateExplicitVersion(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
-                dependency.getVersion(), dependency.getScope(), dependency.getClassifier());
+                dependency.getVersion(), dependency.getScope(), dependency.getClassifier(),
+                dependency.getExclusions());
     }
 
     /**
@@ -262,10 +263,12 @@ public class PomManipulator {
      * @param version
      * @param scope
      * @param classifier
+     * @param exclusions
      * @return true if an existing node was found (not necessarily updated)
      */
     public boolean updateExplicitVersion(String groupId, String artifactId, String type,
-                                         Version version, String scope, String classifier) {
+                                         Version version, String scope, String classifier,
+                                         List<Dependency> exclusions) {
         List<Node> dependencyNodes = findChildNodes(dependenciesNode, Node.ELEMENT_NODE, DEPENDENCY_TAG);
 
         // Don't allow a value of a version to be a lookup (probably of itself)
@@ -335,6 +338,10 @@ public class PomManipulator {
                         }
                     }
                 }
+
+                // Add / Update exclusions!!!
+                dependencyIndentation = findNodeIndentation(dependencyNode);
+                ensureExclusions(dependencyNode, dependencyIndentation, exclusions);
             }
         }
         dirty = (foundExistingNode) ? foundExistingNode : dirty;
@@ -344,18 +351,18 @@ public class PomManipulator {
 
     public void addDependencyNode(Dependency dependency) {
         addDependencyNode(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
-                dependency.getVersion(), dependency.getScope(), dependency.getClassifier());
+                dependency.getVersion(), dependency.getScope(), dependency.getClassifier(), dependency.getExclusions());
     }
 
 
     public void addDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
-                                  String classifier) {
+                                  String classifier, List<Dependency> exclusions) {
         dirty = true;
-        addDependencyNode(groupId, artifactId, type, version, scope, classifier, false);
+        addDependencyNode(groupId, artifactId, type, version, scope, classifier, exclusions, false);
     }
 
     public void addForcedDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
-                                        String classifier) {
+                                        String classifier, List<Dependency> exclusions) {
         dirty = true;
 
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation),
@@ -363,24 +370,26 @@ public class PomManipulator {
         addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START),
                 dependencyIndentation);
 
-        addDependencyNode(groupId, artifactId, type, version, scope, classifier, true);
+        addDependencyNode(groupId, artifactId, type, version, scope, classifier, exclusions, true);
 
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
         addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END), dependenciesIndentation);
     }
 
     private void addDependencyNode(String groupId, String artifactId, String type, Version version,
-                                   String scope, String classifier, boolean needAngelComment) {
+                                   String scope, String classifier, List<Dependency> exclusions,
+                                   boolean needAngelComment) {
         dirty = true;
 
         Node newDependency = createDependencyNode(groupId, artifactId, type, version, scope, classifier,
-                dependencyIndentation, needAngelComment);
+                dependencyIndentation, exclusions, needAngelComment);
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
         addLastChild(dependenciesNode, newDependency, dependenciesIndentation);
     }
 
     private Node createDependencyNode(String groupId, String artifactId, String type, Version version,
-                                      String scope, String classifier, String indentation, boolean needAngelComment) {
+                                      String scope, String classifier, String indentation, List<Dependency> exclusions,
+                                      boolean needAngelComment) {
         Node newDependency = document.createElement(DEPENDENCY_TAG);
 
         String contentIndentation = indentation + nestedIndentation;
@@ -424,9 +433,71 @@ public class PomManipulator {
             newDependency.appendChild(classifierNode);
         }
 
+        // Add exclusions
+        ensureExclusions(newDependency, indentation, exclusions);
+
         // add an indentation to the end of the last element so the closing element looks correct
         newDependency.appendChild(document.createTextNode(indentation));
         return newDependency;
+    }
+
+    private void ensureExclusions(Node dependencyNode, String parentIndentation, List<Dependency> exclusions) {
+        if (exclusions == null || exclusions.size() == 0) {
+            return;
+        }
+
+        String exclusionsIndentation = parentIndentation + nestedIndentation;
+
+        boolean addedExclusionsNode = false;
+        Node exclusionsNode = findChildNode(dependencyNode, Node.ELEMENT_NODE, EXCLUSIONS_TAG);
+        if (exclusionsNode == null) {
+            dependencyNode.appendChild(document.createTextNode(exclusionsIndentation));
+            exclusionsNode = document.createElement(EXCLUSIONS_TAG);
+            dependencyNode.appendChild(exclusionsNode);
+            addedExclusionsNode = true;
+        }
+
+        for (Dependency exclusion : exclusions) {
+            boolean foundExclusion = false;
+            List<Node> exclusionNodes = findChildNodes(exclusionsNode, Node.ELEMENT_NODE, EXCLUSION_TAG);
+            for (Node existingExclusionNode: exclusionNodes) {
+                Node groupIdNode = findChildNode(existingExclusionNode, Node.ELEMENT_NODE, GROUP_ID_TAG);
+                Node artifactIdNode = findChildNode(existingExclusionNode, Node.ELEMENT_NODE, ARTIFACT_ID_TAG);
+
+                if (exclusion.getGroup().equals(groupIdNode.getTextContent())
+                        && exclusion.getArtifact().equals(artifactIdNode.getTextContent())) {
+                    foundExclusion = true;
+                    break;
+                }
+            }
+
+            if (!foundExclusion) {
+                String exclusionIndentation = exclusionsIndentation + nestedIndentation;
+
+                exclusionsNode.appendChild(document.createTextNode(exclusionIndentation));
+                Node newExclusionNode = document.createElement(EXCLUSION_TAG);
+                exclusionsNode.appendChild(newExclusionNode);
+
+                String dataIndentation = exclusionIndentation + nestedIndentation;
+                newExclusionNode.appendChild(document.createTextNode(dataIndentation));
+                Node newGroupIdNode = document.createElement(GROUP_ID_TAG);
+                newGroupIdNode.setTextContent(exclusion.getGroup());
+                newExclusionNode.appendChild(newGroupIdNode);
+                newExclusionNode.appendChild(document.createTextNode(dataIndentation));
+                Node newArtifactIdNode = document.createElement(ARTIFACT_ID_TAG);
+                newArtifactIdNode.setTextContent(exclusion.getArtifact());
+                newExclusionNode.appendChild(newArtifactIdNode);
+
+                // white space before the closing exclusion tag
+                newExclusionNode.appendChild(document.createTextNode(exclusionIndentation));
+            }
+        }
+
+        // white space before the closing exclusion tag
+        if (addedExclusionsNode) {
+            exclusionsNode.appendChild(document.createTextNode(exclusionsIndentation));
+            dependencyNode.appendChild(document.createTextNode(parentIndentation));
+        }
     }
 
     public Node getDependencesNode() {
@@ -435,6 +506,7 @@ public class PomManipulator {
 
     public void stripExclusions(DependencyAngelConfig config) {
         // preserved exclusions and banned dependencies are both treated the same (skip existing exclusions)
+        // TODO: this is duplicated in DependencyAngel
         Set<String> preserveExclusions = new HashSet<>(
                 config.getBannedDependencies().size() + config.getPreserveExclusions().size());
         preserveExclusions.addAll(config.getBannedDependencies());
