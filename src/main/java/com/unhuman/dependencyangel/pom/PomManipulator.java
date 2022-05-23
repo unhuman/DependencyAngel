@@ -667,10 +667,10 @@ public class PomManipulator {
         return nodes;
     }
 
-    public void saveFile() {
+    public boolean saveFile() {
         // only save if something changed
         if (!dirty) {
-            return;
+            return false;
         }
 
         try {
@@ -681,6 +681,8 @@ public class PomManipulator {
             StreamResult result = new StreamResult(output);
 
             transformer.transform(source, result);
+
+            return true;
         } catch (Exception e) {
             throw new RuntimeException("Problem saving: " + filename, e);
         }

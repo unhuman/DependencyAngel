@@ -81,53 +81,19 @@ public class DependencyAngel {
 
         allowProcessing();
 
-        // Open the pom file and remove any exclusions and forced transitive dependencies
-        performPomCleanup(config.getDirectory());
-
         return directoryFile;
     }
 
-    protected void process() {
-        File directoryFile = prepareOperation(config.getDirectory());
-
-        if (config.isCleanOnly()) {
+    protected void setupDependencyManagement() throws ParserConfigurationException, IOException, SAXException {
+        if (!config.performSetup()) {
             return;
         }
 
-        // this processing may take multiple iterations if there are nested dependencies
-        List<DependencyConflict> conflicts;
-        int iteration = 0;
-        while (true) {
-            List<String> analyzeResults;
-            try {
-                analyzeResults = executeCommand(directoryFile, CONVERGE_ERROR, MVN_COMMAND,
-                        "dependency:analyze");
-            } catch (RuntimeException re) {
-                throw re;
-            } catch (Exception e) {
-                throw new RuntimeException("Problem with analyze", e);
-            }
-
-            ConvergenceParser convergenceParser = ConvergenceParser.from(analyzeResults);
-            conflicts = new ArrayList<>(convergenceParser.getDependencyConflicts());
-            System.out.println(String.format("Iteration %d: %d conflicts remaining",
-                    ++iteration, conflicts.size()));
-
-            // We are done when there are no conflicts detected
-            if (conflicts.size() == 0) {
-                break;
-            }
-
-            List<ResolvedDependencyDetailsList> workList = calculatePomChanges(conflicts);
-            updatePomFile(workList);
-        }
-
-        // Happiness
-    }
-
-    protected void setupDependencyManagement() throws ParserConfigurationException, IOException, SAXException {
         // Ensure we are in a valid place to start
         prepareOperation(config.getDirectory());
+
+        // Open the pom file and remove any exclusions and forced transitive dependencies
+        performPomCleanup(config.getDirectory());
 
         // Create a manipulator for the parent pom, so we can validate it correctly
         PomManipulator parentPomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
@@ -149,10 +115,6 @@ public class DependencyAngel {
         // build up a list of subdirectories with pom.xml in them
         for (File nestedPom: nestedPoms) {
             performPomCleanup(nestedPom.getAbsolutePath());
-        }
-
-        if (config.isCleanOnly()) {
-            return;
         }
 
         // preserved exclusions and banned dependencies are both treated the same (skip existing exclusions)
@@ -266,6 +228,44 @@ public class DependencyAngel {
         // Happiness
     }
 
+    protected void process() {
+        if (!config.performProcess()) {
+            return;
+        }
+
+        File directoryFile = prepareOperation(config.getDirectory());
+
+        // this processing may take multiple iterations if there are nested dependencies
+        List<DependencyConflict> conflicts;
+        int iteration = 0;
+        while (true) {
+            List<String> analyzeResults;
+            try {
+                analyzeResults = executeCommand(directoryFile, CONVERGE_ERROR, MVN_COMMAND,
+                        "dependency:analyze");
+            } catch (RuntimeException re) {
+                throw re;
+            } catch (Exception e) {
+                throw new RuntimeException("Problem with analyze", e);
+            }
+
+            ConvergenceParser convergenceParser = ConvergenceParser.from(analyzeResults);
+            conflicts = new ArrayList<>(convergenceParser.getDependencyConflicts());
+            System.out.println(String.format("Iteration %d: %d conflicts remaining",
+                    ++iteration, conflicts.size()));
+
+            // We are done when there are no conflicts detected
+            if (conflicts.size() == 0) {
+                break;
+            }
+
+            List<ResolvedDependencyDetailsList> workList = calculatePomChanges(conflicts);
+            updatePomFile(workList);
+        }
+
+        // Happiness
+    }
+
     /**
      *
      * @param directoryName
@@ -290,12 +290,11 @@ public class DependencyAngel {
     }
 
     private void performPomCleanup(String directoryOrPomFilePath) {
-        if (!config.isNoClean()) {
-            String pomFilePath = getPomFilePath(directoryOrPomFilePath);
-            PomManipulator pomManipulator = new PomManipulator(pomFilePath);
-            pomManipulator.stripExclusions(config);
-            pomManipulator.stripDependencyAngelDependencies();
-            pomManipulator.saveFile();
+        String pomFilePath = getPomFilePath(directoryOrPomFilePath);
+        PomManipulator pomManipulator = new PomManipulator(pomFilePath);
+        pomManipulator.stripExclusions(config);
+        pomManipulator.stripDependencyAngelDependencies();
+        if (pomManipulator.saveFile()) {
             System.out.println("pom cleaned: " + pomFilePath);
         }
     }
@@ -495,16 +494,8 @@ public class DependencyAngel {
         try {
             DependencyAngelConfig config = new DependencyAngelConfig(args);
             DependencyAngel angel = new DependencyAngel(config);
-            switch (config.getMode()) {
-                case Process:
-                    angel.process();
-                    break;
-                case SetupDependencyManagement:
-                    angel.setupDependencyManagement();
-                    break;
-                default:
-                    throw new RuntimeException("Invalid operating mode: " + config.getMode());
-            }
+            angel.setupDependencyManagement();
+            angel.process();
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace(System.err);

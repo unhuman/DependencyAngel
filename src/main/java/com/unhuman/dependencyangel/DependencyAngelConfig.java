@@ -10,24 +10,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DependencyAngelConfig extends StorableAngelConfigData {
-    public enum Mode { SetupDependencyManagement, Process }
+    public enum Mode { All, SetupOnly, ProcessOnly }
 
     private String directory;
     private Map<String, String> environmentVars;
-    private boolean skipPrompts;
-    private boolean cleanOnly;
-    private boolean noClean;
-    private boolean displayExecutionOutput;
     private Mode mode;
+    private boolean skipPrompts;
+    private boolean displayExecutionOutput;
 
     public DependencyAngelConfig(String[] args) {
         super();
         this.directory = null;
         this.environmentVars = new HashMap<>();
         this.skipPrompts = false;
-        this.cleanOnly = false;
-        this.noClean = false;
-        this.mode = Mode.Process;
 
         ArgumentParser parser = ArgumentParsers.newFor(DependencyAngel.class.getSimpleName()).build()
                 .defaultHelp(true)
@@ -38,11 +33,6 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
                 .metavar("<groupId:artifactId,...>")
                 .required(false)
                 .help("Banned dependencies.  Processing preserves exclusions.");
-        parser.addArgument("-c", "--cleanOnly")
-                .type(Boolean.class)
-                .required(false)
-                .action(Arguments.storeTrue())
-                .help("Perform clean up only (cannot be used with noClean).  For process mode.");
         parser.addArgument("-d", "--displayExecutionOutput")
                 .type(Boolean.class)
                 .required(false)
@@ -52,18 +42,12 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
                 .type(String.class)
                 .metavar("<key:value,...>")
                 .required(false)
-                .help("Specify environment variables.  For process mode.");
+                .help("Specify environment variables.");
         parser.addArgument("-m", "--mode")
                 .type(Mode.class)
                 .required(false)
-                .setDefault(Mode.Process)
-                .help("Mode how to operate (SetupDependencyManagement or Process).");
-        parser.addArgument("-n", "--noClean")
-                .type(Boolean.class)
-                .required(false)
-                .action(Arguments.storeTrue())
-                .setDefault(false)
-                .help("Skips clean step (cannot be use with cleanOnly).");
+                .setDefault(Mode.All)
+                .help("Mode how to operate (All, SetupOnly, or ProcessOnly).");
         parser.addArgument("-p", "--preserveExclusions")
                 .type(String.class)
                 .metavar("<groupId:artifactId,...>")
@@ -87,24 +71,14 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
             if (!environmentVars.containsKey("JAVA_HOME") && System.getenv("JAVA_HOME") != null) {
                 environmentVars.put("JAVA_HOME", System.getenv("JAVA_HOME"));
             }
-            cleanOnly = ns.getBoolean("cleanOnly");
-            skipPrompts = ns.getBoolean("skipPrompts");
-            noClean = ns.getBoolean("noClean");
             mode = ns.get("mode");
+            skipPrompts = ns.getBoolean("skipPrompts");
             displayExecutionOutput = ns.get("displayExecutionOutput");
 
             super.setup(ns, directory);
         } catch (ArgumentParserException e) {
             parser.handleError(e);
             System.exit(1);
-        }
-
-        if (cleanOnly && noClean) {
-            throw new RuntimeException("cleanOnly and noClean cannot be provided together");
-        }
-
-        if (mode.equals(Mode.SetupDependencyManagement) && noClean) {
-            throw new RuntimeException("cleanOnly and setupDependencyManagement cannot be provided together");
         }
     }
 
@@ -116,24 +90,20 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
         return environmentVars;
     }
 
+    public boolean performSetup() {
+        return Mode.All.equals(mode) || Mode.SetupOnly.equals(mode);
+    }
+
+    public boolean performProcess() {
+        return Mode.All.equals(mode) || Mode.ProcessOnly.equals(mode);
+    }
+
     public boolean isSkipPrompts() {
         return skipPrompts;
     }
 
-    public boolean isCleanOnly() {
-        return cleanOnly;
-    }
-
-    public boolean isNoClean() {
-        return noClean;
-    }
-
     public boolean isDisplayExecutionOutput() {
         return displayExecutionOutput;
-    }
-
-    public Mode getMode() {
-        return mode;
     }
 
     protected static Map<String, String> getEnvParameterMap(String env) {
