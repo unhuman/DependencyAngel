@@ -261,6 +261,10 @@ public class DependencyAngel {
 
             List<ResolvedDependencyDetailsList> workList = calculatePomChanges(conflicts);
             updatePomFile(workList);
+
+            if (config.performProcessSingleStep()) {
+                return;
+            }
         }
 
         // Happiness
