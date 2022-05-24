@@ -56,11 +56,16 @@ public class DependencyAngel {
             Pattern.compile("DependencyConvergence failed with message");
 
     DependencyAngelConfig config;
+    List<File> nestedPoms;
+
     // Flag to track this so we don't prompt multiple times
     private boolean allowProcessing = false;
 
     protected DependencyAngel(DependencyAngelConfig config) {
         this.config = config;
+
+        // Determine nested poms
+        nestedPoms = findChildPomFiles(config.getDirectory(), config.getDirectory());
     }
 
     private static String getPomFilePath(String directoryOrFile) {
@@ -98,9 +103,6 @@ public class DependencyAngel {
         // Create a manipulator for the parent pom, so we can validate it correctly
         PomManipulator parentPomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
 
-        // Determine nested poms
-        List<File> nestedPoms = findChildPomFiles(config.getDirectory(), config.getDirectory());
-
         // nothing (more) to do if no nested poms
         if (nestedPoms.size() == 0) {
             return;
@@ -129,7 +131,7 @@ public class DependencyAngel {
         for (File nestedPom: nestedPoms) {
             PomManipulator nestedManipulator = new PomManipulator(nestedPom.getAbsolutePath());
 
-            Node dependenciesNode = nestedManipulator.getDependencesNode();
+            Node dependenciesNode = nestedManipulator.getDependenciesNode();
             if (dependenciesNode == null) {
                 // nothing to do here
                 continue;
@@ -397,6 +399,32 @@ public class DependencyAngel {
                 pomManipulator.addForcedDependencyNode(workItem.getGroup(), workItem.getArtifact(),
                         workItem.getResolvedType(), workItem.getLatestVersion(), workItem.getResolvedScope(),
                         workItem.getResolvedClassifier(), null);
+
+                // Figure out if we had a conflicted item that brought in multiple versions of this dependency
+                // if we did, we need to explicitly add a dependency to any user of that library
+                for (File nestedPom: nestedPoms) {
+                    PomManipulator nestedManipulator = new PomManipulator(nestedPom.getAbsolutePath());
+                    boolean dirty = false;
+
+                    for (ResolvedDependencyDetails workDependency : workItem) {
+                        if (workDependency.hasMultipleDependencies()) {
+                            Dependency relatedDependency = workDependency.getInitialDependency();
+
+                            // Any place we find the relatedDependency, we need to add a dependency
+                            // Scan the child poms (maybe we can track those)
+                            if (nestedManipulator.hasDependency(
+                                    relatedDependency.getGroup(), relatedDependency.getArtifact())) {
+                                nestedManipulator.addForcedDependencyNode(
+                                        new Dependency(workItem.getGroup(), workItem.getArtifact()));
+                                dirty = true;
+                            }
+                        }
+                    }
+
+                    if (dirty) {
+                        nestedManipulator.saveFile();
+                    }
+                }
             }
         }
 

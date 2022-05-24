@@ -354,11 +354,15 @@ public class PomManipulator {
                 dependency.getVersion(), dependency.getScope(), dependency.getClassifier(), dependency.getExclusions());
     }
 
-
     public void addDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
                                   String classifier, List<Dependency> exclusions) {
         dirty = true;
         addDependencyNode(groupId, artifactId, type, version, scope, classifier, exclusions, false);
+    }
+
+    public void addForcedDependencyNode(Dependency dependency) {
+        addForcedDependencyNode(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
+                dependency.getVersion(), dependency.getScope(), dependency.getClassifier(), dependency.getExclusions());
     }
 
     public void addForcedDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
@@ -500,8 +504,24 @@ public class PomManipulator {
         }
     }
 
-    public Node getDependencesNode() {
+    public Node getDependenciesNode() {
         return dependenciesNode;
+    }
+
+    public boolean hasDependency(String groupId, String artifactId) {
+        if (dependenciesNode != null) {
+            List<Node> dependencyNodes = findChildElements(dependenciesNode, DEPENDENCY_TAG);
+            for (Node dependencyNode: dependencyNodes) {
+                Node groupIdNode = findChildElement(dependencyNode, GROUP_ID_TAG);
+                Node artifactIdNode = findChildElement(dependencyNode, ARTIFACT_ID_TAG);
+                if (groupIdNode != null && artifactIdNode != null
+                        && groupId.equals(groupIdNode.getTextContent().trim())
+                        && artifactId.equals(artifactIdNode.getTextContent().trim())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public void stripExclusions(DependencyAngelConfig config) {
