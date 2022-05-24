@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 
 public class PomManipulator {
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\r?\\n\\s+");
+    private static final Pattern WHITESPACE_SINGLE_NEWLINE_PATTERN = Pattern.compile("(?:\\r?\\n)*(\\r?\\n\\s+)");
     public static final Pattern PROPERTIES_VERSION = Pattern.compile("\\$\\{(.*)\\}");
     private static final String COMMENT_DEPENDENCY_ANGEL_START = "DependencyAngel Start";
     private static final String COMMENT_DEPENDENCY_ANGEL_END = "DependencyAngel End";
@@ -177,7 +178,12 @@ public class PomManipulator {
     String findNodeIndentation(Node node) {
         Node indentationNode = node.getPreviousSibling();
         if (Node.TEXT_NODE == indentationNode.getNodeType() && indentationNode.getTextContent().isBlank()) {
-            return indentationNode.getTextContent();
+            String indentation = indentationNode.getTextContent();
+            Matcher indendationMatcher = WHITESPACE_SINGLE_NEWLINE_PATTERN.matcher(indentation);
+            if (indendationMatcher.matches()) {
+                indentation = indendationMatcher.group(1);
+            }
+            return indentation;
         }
         return null;
     }
