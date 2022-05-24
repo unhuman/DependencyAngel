@@ -101,8 +101,8 @@ public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyD
         String type = null;
         for (ResolvedDependencyDetails resolvedDependencyDetails: this) {
             if (type == null) {
-                type = resolvedDependencyDetails.getResolvedScope();
-            } else if (!type.equals(resolvedDependencyDetails.getResolvedScope())) {
+                type = resolvedDependencyDetails.getResolvedType();
+            } else if (!type.equals(resolvedDependencyDetails.getResolvedType())) {
                 return null;
             }
         }
