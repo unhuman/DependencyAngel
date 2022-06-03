@@ -36,7 +36,7 @@ import static com.unhuman.dependencyangel.pom.PomManipulator.DEPENDENCY_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.EXCLUSIONS_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.EXCLUSION_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.GROUP_ID_TAG;
-import static com.unhuman.dependencyangel.pom.PomManipulator.PROPERTIES_VERSION;
+import static com.unhuman.dependencyangel.pom.PomManipulator.PROPERTIES_VARIABLE;
 import static com.unhuman.dependencyangel.pom.PomManipulator.SCOPE_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.TYPE_TAG;
 import static com.unhuman.dependencyangel.pom.PomManipulator.VERSION_TAG;
@@ -149,16 +149,26 @@ public class DependencyAngel {
                 if (versionNode != null) {
                     String versionText = versionNode.getTextContent();
                     // See if version is defined in properties
-                    Matcher propertiesVersionMatcher = PROPERTIES_VERSION.matcher(versionText);
+                    Matcher propertiesVersionMatcher = PROPERTIES_VARIABLE.matcher(versionText);
                     if (propertiesVersionMatcher.matches()) {
                         versionPropertyNode = nestedManipulator.findSingleElement(versionText, false);
-                        if (versionPropertyNode != null) {
-                            versionText = versionPropertyNode.getTextContent();
+
+                        // We have a version variable - ensure we can find it - otherwise, we do not process this
+                        if (versionPropertyNode == null) {
+                            continue;
                         }
+
+                        versionText = versionPropertyNode.getTextContent();
+
                         // If we find a version property, but can't lookup the value, then we can assume
                         // this is a project-level dependency.
                     }
                     version = (versionText != null) ? new Version(versionText) : null;
+                }
+
+                // No version - we don't process this
+                if (version == null) {
+                    continue;
                 }
 
                 Node classifierNode = nestedManipulator.getSingleNodeElement(dependencyNode, CLASSIFIER_TAG, false);
@@ -169,13 +179,6 @@ public class DependencyAngel {
 
                 Node typeNode = nestedManipulator.getSingleNodeElement(dependencyNode, TYPE_TAG, false);
                 String type = (typeNode != null) ? typeNode.getTextContent() : null;
-
-                // No version - we don't process this
-                // TODO: we should see if there's a version in parent dependencyManagement already
-                // if there is we can allow this to proceed
-                if (version == null) {
-                    continue;
-                }
 
                 // only strip exclusions whose parent node is a dependency
                 List<Dependency> exclusions = new ArrayList<>();

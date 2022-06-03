@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 public class PomManipulator {
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\r?\\n\\s+");
     private static final Pattern WHITESPACE_SINGLE_NEWLINE_PATTERN = Pattern.compile("(?:\\r?\\n)*(\\r?\\n\\s+)");
-    public static final Pattern PROPERTIES_VERSION = Pattern.compile("\\$\\{(.*)\\}");
+    public static final Pattern PROPERTIES_VARIABLE = Pattern.compile("\\$\\{(.*)\\}");
     private static final String COMMENT_DEPENDENCY_ANGEL_START = "DependencyAngel Start";
     private static final String COMMENT_DEPENDENCY_ANGEL_END = "DependencyAngel End";
     public static final String PROPERTIES_TAG = "properties";
@@ -278,7 +278,7 @@ public class PomManipulator {
         List<Node> dependencyNodes = findChildElements(dependenciesNode, DEPENDENCY_TAG);
 
         // Don't allow a value of a version to be a lookup (probably of itself)
-        boolean skipVersion = (version != null) ? PROPERTIES_VERSION.matcher(version.toString()).matches() : true;
+        boolean skipVersion = (version != null) ? PROPERTIES_VARIABLE.matcher(version.toString()).matches() : true;
 
         boolean foundExistingNode = false;
         for (Node dependencyNode: dependencyNodes) {
@@ -294,7 +294,7 @@ public class PomManipulator {
                     Node versionNode = findChildElement(dependencyNode, VERSION_TAG);
                     if (versionNode != null) {
                         String priorVersion = versionNode.getTextContent();
-                        Matcher matcher = PROPERTIES_VERSION.matcher(priorVersion);
+                        Matcher matcher = PROPERTIES_VARIABLE.matcher(priorVersion);
                         if (matcher.matches()) {
                             String key = matcher.group(1);
                             NodeList versionElements = document.getElementsByTagName(key);
@@ -646,7 +646,7 @@ public class PomManipulator {
         }
 
         // If the value we are receiving here is a property, then we will assume it's already defined
-        if (PROPERTIES_VERSION.matcher(version).matches()) {
+        if (PROPERTIES_VARIABLE.matcher(version).matches()) {
             return version;
         }
 
