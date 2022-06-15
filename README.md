@@ -68,3 +68,6 @@ Dependency Angel performs the following process:
 * If you have challenges, it may be useful to run Dependency Angel in order, manually, to identify where changes could occur.  This is done by running `-m SetupOnly`, then `-m ProcessOnly` or `-m ProcessSingleStep`. 
 * If your application fails at runtime, it could likely be because of a lost transitive dependency (or version issues).  Compare the `mvn dependency:tree` between prior work and Dependency Angel to help identify gaps.
 * If you get a problem finding a version of a dependency from the repository, try doing a build of your project before running Dependency Angel.
+
+## Money
+If you find this tool saves you time, please consider sending me some money: unhumansoftware@gmail.com.  Alternatively, please consider donating the same to a food bank, and let me know: unhumansoftware@gmail.com.  Thank you!
