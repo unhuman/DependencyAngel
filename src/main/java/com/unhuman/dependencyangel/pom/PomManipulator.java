@@ -96,6 +96,14 @@ public class PomManipulator {
                     }
                 }
             }
+
+            if (dependencyIndentation == null) {
+                dependencyIndentation = dependenciesIndentation + nestedIndentation;
+            }
+
+            if (dependencyContentIndentation == null) {
+                dependencyContentIndentation = dependencyIndentation + nestedIndentation;
+            }
         } catch (Exception e) {
             throw new RuntimeException("Problem processing pom file: " + filename, e);
         }
@@ -695,14 +703,14 @@ public class PomManipulator {
     }
 
     public boolean saveFile() {
-        return saveFile(null);
+        return saveFile(null, null);
     }
 
-    public boolean saveFile(String operationPerformed) {
+    public boolean saveFile(String noOperationPerformed, String successOperationPerformed) {
         // only save if something changed
         if (!dirty) {
-            if (operationPerformed != null) {
-                System.out.println("No action taken for: " + operationPerformed);
+            if (noOperationPerformed != null) {
+                System.out.println(noOperationPerformed + ": " + filename);
             }
             return false;
         }
@@ -716,8 +724,8 @@ public class PomManipulator {
 
             transformer.transform(source, result);
 
-            if (operationPerformed != null) {
-                System.out.println("Completed " + operationPerformed);
+            if (successOperationPerformed != null) {
+                System.out.println(successOperationPerformed + ": " + filename);
             }
 
             return true;

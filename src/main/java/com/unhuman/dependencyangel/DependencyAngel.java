@@ -111,7 +111,11 @@ public class DependencyAngel {
         // When we have child poms, we require dependencyManagement section be created
         // TODO: We could create this programmatically
         if (!parentPomManipulator.hasDependencyManagement()) {
-            throw new RuntimeException("Parent pom missing dependencyManagement (note: optional properties).");
+            throw new RuntimeException("Parent pom missing <dependencyManagement> (note: optional properties).");
+        }
+
+        if (parentPomManipulator.getDependenciesNode() == null) {
+            throw new RuntimeException("Parent pom <dependencyManagement> missing <dependencies> node");
         }
 
         // build up a list of subdirectories with pom.xml in them
@@ -218,7 +222,7 @@ public class DependencyAngel {
                 // nestedManipulator.deleteNode(classifierNode, true);
             }
 
-            nestedManipulator.saveFile();
+            nestedManipulator.saveFile(null, "Nested dependency management handled");
         }
 
         // Now update the parent pom to have all the dependencies
@@ -228,7 +232,7 @@ public class DependencyAngel {
                 parentPomManipulator.addDependencyNode(dependency);
             }
         }
-        parentPomManipulator.saveFile();
+        parentPomManipulator.saveFile(null, "Parent dependency management handled");
 
         // Happiness
     }
@@ -333,7 +337,7 @@ public class DependencyAngel {
             }
         }
 
-        pomManipulator.saveFile("exclusion reduction");
+        pomManipulator.saveFile("No exclusion reduction required", "Exclusion reduction performed");
 
         // Happiness
     }
@@ -366,9 +370,7 @@ public class DependencyAngel {
         PomManipulator pomManipulator = new PomManipulator(pomFilePath);
         pomManipulator.stripExclusions(config);
         pomManipulator.stripDependencyAngelDependencies();
-        if (pomManipulator.saveFile()) {
-            System.out.println("pom cleaned: " + pomFilePath);
-        }
+        pomManipulator.saveFile(null, "pom cleaned");
     }
 
     /**
@@ -485,12 +487,12 @@ public class DependencyAngel {
                         }
                     }
 
-                    nestedManipulator.saveFile();
+                    nestedManipulator.saveFile(null, "updated nested pom file");
                 }
             }
         }
 
-        pomManipulator.saveFile();
+        pomManipulator.saveFile(null, "updated pom file");
     }
 
     /**
