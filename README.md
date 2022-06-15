@@ -21,19 +21,30 @@ Dependency Angel is a tool that developers can use with their maven projects to 
 4. If versions are not semantic, an algorithm is in place to resolve latest.  At some level, this is simply a string comparison, which may choose the wrong version.
 5. This is not a complete list.
 
+## Building
+`mvn clean install`
+
+The binary created will be a shaded jar: `target/DependencyAngel-x.y.z-SNAPSHOT.jar`
+
+
 ## Usage 
 ### Command Line:
-`java -jar /path/to/DependencyAngel-1.0.0-SNAPSHOT.jar`
+`java -jar /path/to/DependencyAngel-*-SNAPSHOT.jar`
+
+Setting up an alias to use Dependency Angel may be a good way to have it accessible, with standard options defaulted.
+
+Ex: `alias angel='java -jar /path/to/DependencyAngel-*-SNAPSHOT.jar -b org.slf4j:slf4j-log4j12,org.slf4j:slf4j-jdk14,log4j:log4j,commons-logging:commons-logging,javax.activation:javax.activation-api,javax.servlet:javax.servlet-api,javax.validation:validation-api,javax.xml.bind:jaxb-api,javax.ws.rs:javax.ws.rs-api'`
+which will default to handling some common banned dependencies.
+
 ### Parameters
 * `-h`, `--help` Shows usage information
 * `-b`, `--banned` <groupId:artifactId,...> Accounts for Banned Dependencies (preserves existing exclusions)
 * `-d`, `--displayExecutionOutput` Displays execution output of processing.
-* `-e`, `--env` <key:value,...>
-Specify environment variables.
+* `-e`, `--env` <key:value,...> Specify environment variables.
 * `-m`, `--mode` `All` (default), `SetupOnly`, `ProcessOnly`, `ProcessSingleStep`, or `ExclusionReduction`
 * `-p`, `--preserveExclusions` <groupId:artifactId,...> Preserve exclusions
 * `-s`, `--skipPrompt` (default false)
-* `directory`
+* `directory` location of project
 
 ## Modes
 * `All` (default): Performs SetupOnly, ProcessOnly, and ExclusionsReduction.
@@ -51,6 +62,7 @@ Dependency Angel performs the following process:
    3. Versions are added to properties
 3. Repeats the process step until no dependency issues are found.
 4. Removes unnecessary exclusions from `<dependencyManagement>`
+5. Dependency Angel will keep a config file `.angel.conf` storing some configuration to help make maintenance / reprocessing consistent.
 
 ## Runbook
 * If you have challenges, it may be useful to run Dependency Angel in order, manually, to identify where changes could occur.  This is done by running `-m SetupOnly`, then `-m ProcessOnly` or `-m ProcessSingleStep`. 
