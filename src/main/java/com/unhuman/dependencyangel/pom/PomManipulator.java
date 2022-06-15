@@ -571,6 +571,7 @@ public class PomManipulator {
         stripDependencyAngelDependencies(propertiesNode);
         stripDependencyAngelDependencies(dependenciesNode);
     }
+
     protected void stripDependencyAngelDependencies(Node parentNode) {
         // ensure we have something to do
         if (parentNode == null) {
@@ -694,8 +695,15 @@ public class PomManipulator {
     }
 
     public boolean saveFile() {
+        return saveFile(null);
+    }
+
+    public boolean saveFile(String operationPerformed) {
         // only save if something changed
         if (!dirty) {
+            if (operationPerformed != null) {
+                System.out.println("No action taken for: " + operationPerformed);
+            }
             return false;
         }
 
@@ -707,6 +715,10 @@ public class PomManipulator {
             StreamResult result = new StreamResult(output);
 
             transformer.transform(source, result);
+
+            if (operationPerformed != null) {
+                System.out.println("Completed " + operationPerformed);
+            }
 
             return true;
         } catch (Exception e) {

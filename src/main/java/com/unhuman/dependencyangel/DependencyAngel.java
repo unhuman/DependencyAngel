@@ -275,6 +275,69 @@ public class DependencyAngel {
         // Happiness
     }
 
+    protected void exclusionReduction() {
+        if (!config.performExclusionReduction()) {
+            return;
+        }
+
+        // Update pom.xml
+        PomManipulator pomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
+
+        if (!pomManipulator.hasDependencyManagement()) {
+            return;
+        }
+
+        // Find all the items in dependencyManagement
+        List<Node> dependencyNodes =
+                pomManipulator.findChildElements(pomManipulator.getDependenciesNode(), DEPENDENCY_TAG);
+
+
+
+        // Create a list of all dependencies
+        List<Dependency> managedDependencies = new ArrayList<>(dependencyNodes.size());
+        for (Node dependencyNode: dependencyNodes) {
+            Dependency dependency = new Dependency(
+                    pomManipulator.getSingleNodeElement(dependencyNode, GROUP_ID_TAG, true).getTextContent(),
+                    pomManipulator.getSingleNodeElement(dependencyNode, ARTIFACT_ID_TAG, true).getTextContent());
+            managedDependencies.add(dependency);
+        }
+
+        // Check all other items for exclusion for that item (and remove it)
+        for (Node dependencyNode: dependencyNodes) {
+            Node exclusionsNode = pomManipulator.getSingleNodeElement(dependencyNode, EXCLUSIONS_TAG, false);
+            if (exclusionsNode == null) {
+                continue;
+            }
+
+            List<Node> exclusionNodes =
+                    pomManipulator.findChildElements(exclusionsNode, EXCLUSION_TAG);
+
+            int counter = exclusionNodes.size();
+            for (Node exclusionNode: exclusionNodes) {
+                String exclusionGroupId =
+                        pomManipulator.getSingleNodeElement(exclusionNode, GROUP_ID_TAG, true).getTextContent();
+                String exclusionArtifactId =
+                        pomManipulator.getSingleNodeElement(exclusionNode, ARTIFACT_ID_TAG, true).getTextContent();
+
+                for (Dependency managedDependency: managedDependencies) {
+                    if (managedDependency.getGroup().equals(exclusionGroupId)
+                            && managedDependency.getArtifact().equals(exclusionArtifactId)) {
+                        // either delete the exclusion or exclusions node if nothing left
+                        if (--counter == 0) {
+                            pomManipulator.deleteNode(exclusionsNode, true);
+                        } else {
+                            pomManipulator.deleteNode(exclusionNode, true);
+                        }
+                    }
+                }
+            }
+        }
+
+        pomManipulator.saveFile("exclusion reduction");
+
+        // Happiness
+    }
+
     /**
      *
      * @param directoryName
@@ -407,7 +470,6 @@ public class DependencyAngel {
                 // if we did, we need to explicitly add a dependency to any user of that library
                 for (File nestedPom: nestedPoms) {
                     PomManipulator nestedManipulator = new PomManipulator(nestedPom.getAbsolutePath());
-                    boolean dirty = false;
 
                     for (ResolvedDependencyDetails workDependency : workItem) {
                         if (workDependency.hasMultipleDependencies()) {
@@ -419,14 +481,11 @@ public class DependencyAngel {
                                     relatedDependency.getGroup(), relatedDependency.getArtifact())) {
                                 nestedManipulator.addForcedDependencyNode(
                                         new Dependency(workItem.getGroup(), workItem.getArtifact()));
-                                dirty = true;
                             }
                         }
                     }
 
-                    if (dirty) {
-                        nestedManipulator.saveFile();
-                    }
+                    nestedManipulator.saveFile();
                 }
             }
         }
@@ -531,6 +590,7 @@ public class DependencyAngel {
             DependencyAngel angel = new DependencyAngel(config);
             angel.setupDependencyManagement();
             angel.process();
+            angel.exclusionReduction();
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace(System.err);

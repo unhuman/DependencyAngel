@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DependencyAngelConfig extends StorableAngelConfigData {
-    public enum Mode { All, SetupOnly, ProcessOnly, ProcessSingleStep }
+    public enum Mode { All, SetupOnly, ProcessOnly, ProcessSingleStep, ExclusionReduction }
 
     private String directory;
     private Map<String, String> environmentVars;
@@ -47,7 +47,7 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
                 .type(Mode.class)
                 .required(false)
                 .setDefault(Mode.All)
-                .help("Mode how to operate (All, SetupOnly, ProcessOnly, or ProcessSingleStep).");
+                .help("Mode how to operate (All, SetupOnly, ProcessOnly, ProcessSingleStep, or ExclusionReduction).");
         parser.addArgument("-p", "--preserveExclusions")
                 .type(String.class)
                 .metavar("<groupId:artifactId,...>")
@@ -100,6 +100,10 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
 
     public boolean performProcessSingleStep() {
         return Mode.ProcessSingleStep.equals(mode);
+    }
+
+    public boolean performExclusionReduction() {
+        return Mode.All.equals(mode) || Mode.ExclusionReduction.equals(mode);
     }
 
     public boolean isSkipPrompts() {

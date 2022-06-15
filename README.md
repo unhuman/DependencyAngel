@@ -14,15 +14,6 @@ ensure they have backups.
 ## Description
 Dependency Angel is a tool that developers can use with their maven projects to help manage "Dependency Hell" with conflicting and transitive dependencies.
 
-## Workflow
-Dependency Angel performs the following process:
-1. Performs a preparation function which cleans out any existing exclusions.  This is to ensure that all dependencies are re-evaluated and latest versions are chosen.
-2. Performs a process step that runs `mvn dependency:analyze` and evaluates dependencies and determines if there are conflicts.  These conflicts are processed, assuming the latest version is always desired.
-   1. Latest version is preferred (see Assumptions)
-   2. Explicit dependencies are added when transitive conflicts cannot be resolved from a single source
-   3. Versions are added to properties
-3. Repeats the process step until no dependency issues are found.
-
 ## Assumptions (Incomplete List)
 1. Projects are either a single pom.xml file or a hierarchy of 2 levels.
 2. If it's a hierarchy of 2 levels, versions are managed in the parent pom.
@@ -39,10 +30,27 @@ Dependency Angel performs the following process:
 * `-d`, `--displayExecutionOutput` Displays execution output of processing.
 * `-e`, `--env` <key:value,...>
 Specify environment variables.
-* `-m`, `--mode` `All` (default), `SetupOnly`, or `ProcessOnly`, `ProcessSingleStep`
+* `-m`, `--mode` `All` (default), `SetupOnly`, `ProcessOnly`, `ProcessSingleStep`, or `ExclusionReduction`
 * `-p`, `--preserveExclusions` <groupId:artifactId,...> Preserve exclusions
 * `-s`, `--skipPrompt` (default false)
 * `directory`
+
+## Modes
+* `All` (default): Performs SetupOnly, ProcessOnly, and ExclusionsReduction.
+* `SetupOnly`: Cleans out exclusions for processing.
+* `ProcessOnly`: Iterates dependency management processing until done.
+* `ProcessSingleStep`: Single iteration of dependency mangement processing.
+* `ExclusionsReduction`: Remove unnecessary exclusions in dependencyMangement. 
+
+## Workflow
+Dependency Angel performs the following process:
+1. Performs a setup step which cleans out any existing exclusions.  This is to ensure that all dependencies are re-evaluated and latest versions are chosen.
+2. Performs a process step that runs `mvn dependency:analyze` and evaluates dependencies and determines if there are conflicts.  These conflicts are processed, assuming the latest version is always desired.
+   1. Latest version is preferred (see Assumptions)
+   2. Explicit dependencies are added when transitive conflicts cannot be resolved from a single source
+   3. Versions are added to properties
+3. Repeats the process step until no dependency issues are found.
+4. Removes unnecessary exclusions from `<dependencyManagement>`
 
 ## Runbook
 * If you have challenges, it may be useful to run Dependency Angel in order, manually, to identify where changes could occur.  This is done by running `-m SetupOnly`, then `-m ProcessOnly` or `-m ProcessSingleStep`. 
