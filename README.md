@@ -41,7 +41,7 @@ which will default to handling some common banned dependencies.
 * `-b`, `--banned` <groupId:artifactId,...> Accounts for Banned Dependencies (preserves existing exclusions)
 * `-d`, `--displayExecutionOutput` Displays execution output of processing.
 * `-e`, `--env` <key:value,...> Specify environment variables.
-* `-m`, `--mode` `All` (default), `SetupOnly`, `ProcessOnly`, `ProcessSingleStep`, or `ExclusionReduction`
+* `-m`, `--mode` `All` (default), `SetupOnly`, `Continue`, `ProcessOnly`, `ProcessSingleStep`, or `ExclusionReduction`
 * `-p`, `--preserveExclusions` <groupId:artifactId,...> Preserve exclusions
 * `-s`, `--skipPrompt` (default false)
 * `directory` location of project
@@ -49,9 +49,10 @@ which will default to handling some common banned dependencies.
 ## Modes
 * `All` (default): Performs SetupOnly, ProcessOnly, and ExclusionsReduction.
 * `SetupOnly`: Cleans out exclusions for processing.
+* `Continue`: Performs ProcessOnly and then ExclusionReduction
 * `ProcessOnly`: Iterates dependency management processing until done.
 * `ProcessSingleStep`: Single iteration of dependency mangement processing.
-* `ExclusionsReduction`: Remove unnecessary exclusions in dependencyMangement. 
+* `ExclusionReduction`: Remove unnecessary exclusions in dependencyMangement. 
 
 ## Workflow
 Dependency Angel performs the following process:

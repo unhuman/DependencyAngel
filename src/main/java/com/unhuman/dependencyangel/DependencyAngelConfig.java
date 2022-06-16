@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DependencyAngelConfig extends StorableAngelConfigData {
-    public enum Mode { All, SetupOnly, ProcessOnly, ProcessSingleStep, ExclusionReduction }
+    public enum Mode { All, SetupOnly, Continue, ProcessOnly, ProcessSingleStep, ExclusionReduction }
 
     private String directory;
     private Map<String, String> environmentVars;
@@ -47,7 +47,8 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
                 .type(Mode.class)
                 .required(false)
                 .setDefault(Mode.All)
-                .help("Mode how to operate (All, SetupOnly, ProcessOnly, ProcessSingleStep, or ExclusionReduction).");
+                .help("Mode how to operate (All, SetupOnly, Continue, " +
+                        "ProcessOnly, ProcessSingleStep, or ExclusionReduction).");
         parser.addArgument("-p", "--preserveExclusions")
                 .type(String.class)
                 .metavar("<groupId:artifactId,...>")
@@ -95,7 +96,8 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
     }
 
     public boolean performProcess() {
-        return Mode.All.equals(mode) || Mode.ProcessOnly.equals(mode) || Mode.ProcessSingleStep.equals(mode);
+        return Mode.All.equals(mode) || Mode.Continue.equals(mode) ||
+                Mode.ProcessOnly.equals(mode) || Mode.ProcessSingleStep.equals(mode);
     }
 
     public boolean performProcessSingleStep() {
@@ -103,7 +105,7 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
     }
 
     public boolean performExclusionReduction() {
-        return Mode.All.equals(mode) || Mode.ExclusionReduction.equals(mode);
+        return Mode.All.equals(mode) || Mode.Continue.equals(mode) || Mode.ExclusionReduction.equals(mode);
     }
 
     public boolean isSkipPrompts() {
