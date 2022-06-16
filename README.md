@@ -70,4 +70,4 @@ Dependency Angel performs the following process:
 * If you get a problem finding a version of a dependency from the repository, try doing a build of your project before running Dependency Angel.
 
 ## Money
-If you find this tool saves you time, please consider sending me some money: unhumansoftware@gmail.com.  Alternatively, please consider donating the same to a food bank, and let me know: unhumansoftware@gmail.com.  Thank you!
+If you find this tool saves you time, please consider sending me some money via PayPal: unhumansoftware@gmail.com.  Alternatively, please consider donating the same to a food bank, and let me know: unhumansoftware@gmail.com.  Thank you!
