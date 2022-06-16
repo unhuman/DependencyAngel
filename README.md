@@ -47,12 +47,12 @@ which will default to handling some common banned dependencies.
 * `directory` location of project
 
 ## Modes
-* `All` (default): Performs SetupOnly, ProcessOnly, and ExclusionsReduction.
+* `All` (default): Performs SetupOnly, ProcessOnly, and ExclusionReduction.
 * `SetupOnly`: Cleans out exclusions for processing.
 * `Continue`: Performs ProcessOnly and then ExclusionReduction
 * `ProcessOnly`: Iterates dependency management processing until done.
-* `ProcessSingleStep`: Single iteration of dependency mangement processing.
-* `ExclusionReduction`: Remove unnecessary exclusions in dependencyMangement. 
+* `ProcessSingleStep`: Single iteration of dependency management processing.
+* `ExclusionReduction`: Remove unnecessary exclusions in dependencyManagement. 
 
 ## Workflow
 Dependency Angel performs the following process:
