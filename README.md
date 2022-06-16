@@ -3,23 +3,21 @@
 ## Disclaimer
 **This application comes without guarantees of any kind.**
 
-1. Anyone using this tool is responsible to ensure that
-Dependency Angel tool's changes are appropriate.  
-2. Dependency Angel may make decisions that could result
-in incorrect behavior, including Runtime failures.
-3. Dependency Angel is a destructive process, so users should 
-ensure they have backups.
+1. Anyone using this tool is responsible to ensure that Dependency Angel tool's changes are appropriate.  
+2. Dependency Angel may make decisions that could result in incorrect behavior, including Runtime failures.
+3. Dependency Angel is a destructive process, so users should ensure they have backups.
 4. This is not a complete list. 
 
 ## Description
 Dependency Angel is a tool that developers can use with their maven projects to help manage "Dependency Hell" with conflicting and transitive dependencies.
 
 ## Assumptions (Incomplete List)
-1. Projects are either a single pom.xml file or a hierarchy of 2 levels.
-2. If it's a hierarchy of 2 levels, versions are managed in the parent pom.
-3. Semantic versioning is preferred.  Semantic versions are preferred over non-semantic versions.
-4. If versions are not semantic, an algorithm is in place to resolve latest.  At some level, this is simply a string comparison, which may choose the wrong version.
-5. This is not a complete list.
+1. This is an opinionated process.  Developers need to understand how dependency management works in maven and should understand and validate the changes made by Dependency Angel.
+2. Projects are either a single pom.xml file or a hierarchy of 2 levels.
+3. If it's a hierarchy of 2 levels, versions are managed in the parent pom.
+4. Semantic versioning is preferred.  Semantic versions are preferred over non-semantic versions.
+5. If versions are not semantic, an algorithm is in place to resolve latest.  At some level, this is simply a string comparison, which may choose the wrong version.
+6. This is not a complete list.
 
 ## Building
 `mvn clean install`
