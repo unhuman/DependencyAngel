@@ -66,7 +66,8 @@ Dependency Angel performs the following process:
 5. Dependency Angel will keep a config file `.angel.conf` storing some configuration to help make maintenance / reprocessing consistent.
 
 ## Runbook
-* If you have challenges, it may be useful to run Dependency Angel in order, manually, to identify where changes could occur.  This is done by running `-m SetupOnly`, then `-m ProcessOnly` or `-m ProcessSingleStep`. 
+* If you have challenges, it may be useful to run Dependency Angel in order, manually, to identify where changes could occur.  This is done by running `-m SetupOnly`, then `-m ProcessOnly` or `-m ProcessSingleStep`.
+* If Dependency Angel adds an explicit dependency that has banned transitive dependency, you will have to manually add that exclusion.
 * If your application fails at runtime, it could likely be because of a lost transitive dependency (or version issues).  Compare the `mvn dependency:tree` between prior work and Dependency Angel to help identify gaps.
 * If you get a problem finding a version of a dependency from the repository, try doing a build of your project before running Dependency Angel.
 
