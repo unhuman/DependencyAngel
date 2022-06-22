@@ -26,8 +26,9 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
 
         ArgumentParser parser = ArgumentParsers.newFor(DependencyAngel.class.getSimpleName()).build()
                 .defaultHelp(true)
-                .description("Resolve conflicting dependencies (exclusions).  " +
-                        "This is a destructive process.  Have backups!");
+                .description("Resolve conflicting dependencies (exclusions)." +
+                        "\nThis is a destructive process.  Have backups!" +
+                        "\nSee: https://github.com/unhuman/DependencyAngel");
         parser.addArgument("-b", "--banned")
                 .type(String.class)
                 .metavar("<groupId:artifactId,...>")
