@@ -479,8 +479,8 @@ public class DependencyAngel {
 
                             // Any place we find the relatedDependency, we need to add a dependency
                             // Scan the child poms (maybe we can track those)
-                            if (nestedManipulator.hasDependency(
-                                    relatedDependency.getGroup(), relatedDependency.getArtifact())) {
+                            if (nestedManipulator.findDependency(
+                                    relatedDependency.getGroup(), relatedDependency.getArtifact()) != null) {
                                 nestedManipulator.addForcedDependencyNode(
                                         new Dependency(workItem.getGroup(), workItem.getArtifact()));
                             }
