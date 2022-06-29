@@ -196,9 +196,9 @@ public class PomManipulator {
         return null;
     }
 
-    public void addExclusion(String parentGroupId, String parentArtifactId,
+    public boolean addExclusion(String parentGroupId, String parentArtifactId,
                              String exclusionGroupId, String exclusionArtifactId) {
-        dirty = true;
+        boolean changed = false;
 
         List<Node> dependencyNodes = findChildElements(dependenciesNode, DEPENDENCY_TAG);
         for (Node dependencyNode: dependencyNodes) {
@@ -209,6 +209,7 @@ public class PomManipulator {
 
             if (parentGroupId.equals(groupIdNode.getTextContent())
                     && parentArtifactId.equals(artifactIdNode.getTextContent())) {
+                changed = true;
                 // either find or create an <exclusions> node
                 Node exclusionsNode = findChildElement(dependencyNode, EXCLUSIONS_TAG);
                 if (exclusionsNode == null) {
@@ -237,10 +238,11 @@ public class PomManipulator {
                 addLastChild(exclusionsNode, newExclusion, dependencyContentIndentation);
             }
         }
+        return changed;
     }
 
     protected void addLastChild(Node parentNode, Node addNode, String parentNodeIndentation) {
-        dirty = true;
+        setDirty();
 
         Node lastChild = parentNode.getLastChild();
         Node appendPoint = (lastChild != null
@@ -370,7 +372,6 @@ public class PomManipulator {
 
     public void addDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
                                   String classifier, List<Dependency> exclusions) {
-        dirty = true;
         addDependencyNode(groupId, artifactId, type, version, scope, classifier, exclusions, false);
     }
 
@@ -381,8 +382,6 @@ public class PomManipulator {
 
     public void addForcedDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
                                         String classifier, List<Dependency> exclusions) {
-        dirty = true;
-
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation),
                 dependencyIndentation);
         addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START),
@@ -397,8 +396,6 @@ public class PomManipulator {
     private void addDependencyNode(String groupId, String artifactId, String type, Version version,
                                    String scope, String classifier, List<Dependency> exclusions,
                                    boolean needAngelComment) {
-        dirty = true;
-
         Node newDependency = createDependencyNode(groupId, artifactId, type, version, scope, classifier,
                 dependencyIndentation, exclusions, needAngelComment);
         addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
@@ -408,6 +405,8 @@ public class PomManipulator {
     private Node createDependencyNode(String groupId, String artifactId, String type, Version version,
                                       String scope, String classifier, String indentation, List<Dependency> exclusions,
                                       boolean needAngelComment) {
+        setDirty();
+
         Node newDependency = document.createElement(DEPENDENCY_TAG);
 
         String contentIndentation = indentation + nestedIndentation;
@@ -522,7 +521,7 @@ public class PomManipulator {
         return dependenciesNode;
     }
 
-    public boolean hasDependency(String groupId, String artifactId) {
+    public Node findDependency(String groupId, String artifactId) {
         if (dependenciesNode != null) {
             List<Node> dependencyNodes = findChildElements(dependenciesNode, DEPENDENCY_TAG);
             for (Node dependencyNode: dependencyNodes) {
@@ -531,11 +530,11 @@ public class PomManipulator {
                 if (groupIdNode != null && artifactIdNode != null
                         && groupId.equals(groupIdNode.getTextContent().trim())
                         && artifactId.equals(artifactIdNode.getTextContent().trim())) {
-                    return true;
+                    return dependencyNode;
                 }
             }
         }
-        return false;
+        return null;
     }
 
     public void stripExclusions(DependencyAngelConfig config) {
@@ -641,7 +640,7 @@ public class PomManipulator {
         // delete the desired node
         deleteNode.getParentNode().removeChild(deleteNode);
 
-        dirty = true;
+        setDirty();
     }
 
     /**
@@ -659,7 +658,7 @@ public class PomManipulator {
             return version;
         }
 
-        dirty = true;
+        setDirty();
 
         String propertiesIndent = findNodeIndentation(propertiesNode);
         String versionIndent = propertiesIndent + nestedIndentation;
@@ -732,5 +731,9 @@ public class PomManipulator {
         } catch (Exception e) {
             throw new RuntimeException("Problem saving: " + filename, e);
         }
+    }
+
+    private void setDirty() {
+        dirty = true;
     }
 }
