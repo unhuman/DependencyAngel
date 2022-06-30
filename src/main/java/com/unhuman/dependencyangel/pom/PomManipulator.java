@@ -54,6 +54,10 @@ public class PomManipulator {
     private String nestedIndentation = "    ";
     private String dependencyContentIndentation;
 
+    // Keep track of this nodes group + artifact
+    private String groupId;
+    private String artifactId;
+
     public PomManipulator(String filename) {
         try {
             this.filename = filename;
@@ -68,6 +72,10 @@ public class PomManipulator {
             if (!projectNode.getNodeName().equals("project")) {
                 throw new RuntimeException("Could not find project node");
             }
+
+            groupId = getSingleNodeElementText(projectNode, GROUP_ID_TAG, false);
+            artifactId = getSingleNodeElementText(projectNode, ARTIFACT_ID_TAG, true);
+
             // determine indentations
             propertiesNode = findDesiredNode(document.getElementsByTagName(PROPERTIES_TAG), projectNode, projectNode);
             dependencyManagementNode = findSingleElement(DEPENDENCY_MANAGEMENT_TAG, false);
@@ -215,6 +223,21 @@ public class PomManipulator {
 
         return foundNodes.get(0);
     }
+
+    public String getSingleNodeElementText(Node parentNode, String itemDesired, boolean required) {
+        Node foundNode = getSingleNodeElement(parentNode, itemDesired, required);
+        if (foundNode == null) {
+            return null;
+        }
+
+        String text = foundNode.getTextContent().trim();
+        if (required && text.length() == 0) {
+            throw new RuntimeException("Expected text for element: " + itemDesired);
+        }
+
+        return text;
+    }
+
 
     String findNodeIndentation(Node node) {
         if (node != null) {
@@ -768,6 +791,14 @@ public class PomManipulator {
         } catch (Exception e) {
             throw new RuntimeException("Problem saving: " + filename, e);
         }
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public String getArtifactId() {
+        return artifactId;
     }
 
     private void setDirty() {
