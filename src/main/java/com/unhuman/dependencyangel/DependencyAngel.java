@@ -103,20 +103,7 @@ public class DependencyAngel {
         // Create a manipulator for the parent pom, so we can validate it correctly
         PomManipulator parentPomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
 
-        // nothing (more) to do if no nested poms
-        if (nestedPoms.size() == 0) {
-            return;
-        }
-
-        // When we have child poms, we require dependencyManagement section be created
-        // TODO: We could create this programmatically
-        if (!parentPomManipulator.hasDependencyManagement()) {
-            throw new RuntimeException("Parent pom missing <dependencyManagement> (note: optional properties).");
-        }
-
-        if (parentPomManipulator.getDependenciesNode() == null) {
-            throw new RuntimeException("Parent pom <dependencyManagement> missing <dependencies> node");
-        }
+        parentPomManipulator.ensureDependencyManagement();
 
         // build up a list of subdirectories with pom.xml in them
         for (File nestedPom: nestedPoms) {
@@ -295,8 +282,6 @@ public class DependencyAngel {
         List<Node> dependencyNodes =
                 pomManipulator.findChildElements(pomManipulator.getDependenciesNode(), DEPENDENCY_TAG);
 
-
-
         // Create a list of all dependencies
         List<Dependency> managedDependencies = new ArrayList<>(dependencyNodes.size());
         for (Node dependencyNode: dependencyNodes) {
@@ -440,27 +425,44 @@ public class DependencyAngel {
 
         // Update dependencies
         for (ResolvedDependencyDetailsList workItem: workList) {
-            // Determine the required scope and version
-            Version explicitVersion = (workItem.getLatestVersion());
+            // If there is a self referential (circular dependency) item in here, we need to manage exclusions
+            boolean circularDependency = false;
+            for (ResolvedDependencyDetails details: workItem) {
+                // if a top level dependency is this guy - it's our own, so - no version
+                if (details.getInitialDependency().getGroup().equals(workItem.getGroup())
+                        && details.getInitialDependency().getArtifact().equals(workItem.getArtifact()) ) {
+                    circularDependency = true;
+                    break;
+                }
+            }
 
             boolean needsExplicitDependency = true;
-            for (ResolvedDependencyDetails workDependency: workItem) {
-                if (workDependency.isExplicitDependency()) {
-                    needsExplicitDependency = false;
-                    // update the explicit dependency with version + scope
-                    pomManipulator.updateExplicitVersion(
-                            workDependency.getInitialDependency().getGroup(),
-                            workDependency.getInitialDependency().getArtifact(),
-                            workItem.getResolvedType(), workItem.getLatestVersion(),
-                            workItem.getResolvedScope(), workItem.getResolvedClassifier(), null);
+            if (circularDependency) {
+                System.out.println("Circular dependency found: " + workItem.getArtifact());
+                // Determine the required scope and version
+                Version explicitVersion = workItem.getLatestVersion();
+
+                for (ResolvedDependencyDetails workDependency: workItem) {
+                    if (workDependency.isExplicitDependency()) {
+                        needsExplicitDependency = false;
+                        System.out.println("Updating version: " + workItem.getArtifact());
+                        // update the explicit dependency with version + scope
+                        pomManipulator.updateExplicitVersion(
+                                workDependency.getInitialDependency().getGroup(),
+                                workDependency.getInitialDependency().getArtifact(),
+                                workItem.getResolvedType(), workItem.getLatestVersion(),
+                                workItem.getResolvedScope(), workItem.getResolvedClassifier(), null);
+                    }
+                    if (workDependency.needsExclusion(explicitVersion)) {
+                        // exclude the dependency
+                        System.out.println("Excluding: " + workItem.getArtifact() + " from: " +
+                                        workDependency.getInitialDependency().getArtifact());
+                        pomManipulator.addExclusion(workDependency.getInitialDependency().getGroup(),
+                                workDependency.getInitialDependency().getArtifact(),
+                                workItem.getGroup(), workItem.getArtifact());
+                    }
+                    // else is scope satisfied here - if it was, we don't need explicit dependency
                 }
-                if (workDependency.needsExclusion(explicitVersion)) {
-                    // exclude the dependency
-                    pomManipulator.addExclusion(workDependency.getInitialDependency().getGroup(),
-                            workDependency.getInitialDependency().getArtifact(),
-                            workItem.getGroup(), workItem.getArtifact());
-                }
-                // else is scope satisfied here - if it was, we don't need explicit dependency
             }
 
             if (needsExplicitDependency) {
@@ -470,20 +472,16 @@ public class DependencyAngel {
 
                 // Figure out if we had a conflicted item that brought in multiple versions of this dependency
                 // if we did, we need to explicitly add a dependency to any user of that library
-                for (File nestedPom: nestedPoms) {
+                for (File nestedPom : nestedPoms) {
                     PomManipulator nestedManipulator = new PomManipulator(nestedPom.getAbsolutePath());
 
-                    for (ResolvedDependencyDetails workDependency : workItem) {
-                        if (workDependency.hasMultipleDependencies()) {
-                            Dependency relatedDependency = workDependency.getInitialDependency();
-
-                            // Any place we find the relatedDependency, we need to add a dependency
-                            // Scan the child poms (maybe we can track those)
-                            if (nestedManipulator.findDependency(
-                                    relatedDependency.getGroup(), relatedDependency.getArtifact()) != null) {
-                                nestedManipulator.addForcedDependencyNode(
-                                        new Dependency(workItem.getGroup(), workItem.getArtifact()));
-                            }
+                    // Any place we find the dependency, we need to strip out the version
+                    // Scan the child poms (maybe we can track those)
+                    Node dependencyNode = nestedManipulator.findDependency(workItem.getGroup(), workItem.getArtifact());
+                    if (dependencyNode != null) {
+                        List<Node> versionNodes = nestedManipulator.findChildElements(dependencyNode, VERSION_TAG);
+                        for (Node versionNode : versionNodes) {
+                            nestedManipulator.deleteNode(versionNode, true);
                         }
                     }
 

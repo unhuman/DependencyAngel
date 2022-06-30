@@ -109,6 +109,39 @@ public class PomManipulator {
         }
     }
 
+    /**
+     * Ensure there is a dependencyManagement section in the pom.xml
+     */
+    public void ensureDependencyManagement() {
+        // We require dependencyManagement section be created
+        String dependencyManagementIndentation = findNodeIndentation(null);
+        if (!hasDependencyManagement()) {
+            // Create a dependencyManagementNode
+            dependencyManagementNode = document.createElement(DEPENDENCY_MANAGEMENT_TAG);
+
+            // insert it where we can
+            if (dependenciesNode != null) {
+                dependenciesNode.getParentNode().insertBefore(dependencyManagementNode, dependenciesNode);
+                // insert whitespace
+                dependenciesNode.getParentNode().insertBefore(
+                        document.createTextNode(dependenciesIndentation), dependenciesNode);
+            } else {
+                document.getFirstChild().appendChild(document.createTextNode(dependencyManagementIndentation));
+                document.getFirstChild().appendChild(dependencyManagementNode);
+                document.getFirstChild().appendChild(document.createTextNode("\n"));
+            }
+        }
+
+        // Ensure dependencyManagement has dependencies
+        if (findChildElement(dependencyManagementNode, DEPENDENCIES_TAG) == null) {
+            String dependenciesIndentation = dependencyManagementIndentation + nestedIndentation;
+            addLastChild(dependencyManagementNode, document.createTextNode(dependenciesIndentation),
+                    dependencyManagementIndentation);
+            dependenciesNode = document.createElement(DEPENDENCIES_TAG);
+            addLastChild(dependencyManagementNode, dependenciesNode, dependencyManagementIndentation);
+        }
+    }
+
     public boolean hasDependencyManagement() {
         return (dependencyManagementNode != null);
     }
@@ -184,16 +217,20 @@ public class PomManipulator {
     }
 
     String findNodeIndentation(Node node) {
-        Node indentationNode = node.getPreviousSibling();
-        if (Node.TEXT_NODE == indentationNode.getNodeType() && indentationNode.getTextContent().isBlank()) {
-            String indentation = indentationNode.getTextContent();
-            Matcher indendationMatcher = WHITESPACE_SINGLE_NEWLINE_PATTERN.matcher(indentation);
-            if (indendationMatcher.matches()) {
-                indentation = indendationMatcher.group(1);
+        if (node != null) {
+            Node indentationNode = node.getPreviousSibling();
+            if (indentationNode != null
+                    && Node.TEXT_NODE == indentationNode.getNodeType()
+                    && indentationNode.getTextContent().isBlank()) {
+                String indentation = indentationNode.getTextContent();
+                Matcher indendationMatcher = WHITESPACE_SINGLE_NEWLINE_PATTERN.matcher(indentation);
+                if (indendationMatcher.matches()) {
+                    indentation = indendationMatcher.group(1);
+                }
+                return indentation;
             }
-            return indentation;
         }
-        return null;
+        return '\n' + nestedIndentation;
     }
 
     public boolean addExclusion(String parentGroupId, String parentArtifactId,
