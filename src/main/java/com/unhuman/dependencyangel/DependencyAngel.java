@@ -578,7 +578,7 @@ public class DependencyAngel {
                 for (String errLine: allOutput) {
                     System.err.println(errLine);
                 }
-                throw new RuntimeException(String.format("Could not find desired value in output: %s status code: %d",
+                throw new RuntimeException(String.format("Could not find desired value in output: [%s] status code: %d",
                         errorMatchForSuccess, processResult));
             }
         } catch (Exception e) {
