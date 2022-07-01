@@ -432,7 +432,7 @@ public class DependencyAngel {
                 // TODO: maybe we can check top level artifact, too
                 if (details.getInitialDependency().getGroup().equals(workItem.getGroup())
                         && details.getInitialDependency().getArtifact().equals(workItem.getArtifact())
-                        && details.getInitialDependency().getVersion().equals(workItem.getLatestVersion())) {
+                        && !details.getInitialDependency().getVersion().equals(workItem.getLatestVersion())) {
                     circularDependency = true;
                     break;
                 }
