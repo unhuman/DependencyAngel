@@ -229,6 +229,14 @@ public class DependencyAngel {
             return;
         }
 
+        // Read in all the pom files to build up the static state of knowing internal artifacts
+        // TODO: Improve this!
+        new PomManipulator(getPomFilePath(config.getDirectory()));
+        // build up a list of subdirectories with pom.xml in them
+        for (File nestedPom: nestedPoms) {
+            new PomManipulator(nestedPom.getAbsolutePath());
+        }
+
         File directoryFile = prepareOperation(config.getDirectory());
 
         // this processing may take multiple iterations if there are nested dependencies
