@@ -55,6 +55,7 @@ public class PomManipulator {
     private String dependencyContentIndentation;
 
     // Keep track of this nodes group + artifact
+    private static final HashSet<String> knownArtifacts = new HashSet<>();
     private String groupId;
     private String artifactId;
 
@@ -75,6 +76,7 @@ public class PomManipulator {
 
             groupId = getSingleNodeElementText(projectNode, GROUP_ID_TAG, false);
             artifactId = getSingleNodeElementText(projectNode, ARTIFACT_ID_TAG, true);
+            knownArtifacts.add(groupId + ":" + artifactId);
 
             // determine indentations
             propertiesNode = findDesiredNode(document.getElementsByTagName(PROPERTIES_TAG), projectNode, projectNode);
@@ -115,6 +117,11 @@ public class PomManipulator {
         } catch (Exception e) {
             throw new RuntimeException("Problem processing pom file: " + filename, e);
         }
+    }
+
+    public static boolean isKnownArtifact(String groupId, String artifactId) {
+        String artifact = groupId + ":" + artifactId;
+        return knownArtifacts.contains(artifact);
     }
 
     /**
