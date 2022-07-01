@@ -101,7 +101,7 @@ public class DependencyAngel {
         performPomCleanup(config.getDirectory());
 
         // Create a manipulator for the parent pom, so we can validate it correctly
-        PomManipulator parentPomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
+        PomManipulator parentPomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()), config);
 
         parentPomManipulator.ensureDependencyManagement();
 
@@ -120,7 +120,7 @@ public class DependencyAngel {
         // in main pom.xml, validate / check dependency management
         List<Dependency> dependenciesToManage = new ArrayList<>();
         for (File nestedPom: nestedPoms) {
-            PomManipulator nestedManipulator = new PomManipulator(nestedPom.getAbsolutePath());
+            PomManipulator nestedManipulator = new PomManipulator(nestedPom.getAbsolutePath(), config);
 
             Node dependenciesNode = nestedManipulator.getDependenciesNode();
             if (dependenciesNode == null) {
@@ -221,6 +221,11 @@ public class DependencyAngel {
         }
         parentPomManipulator.saveFile(null, "Parent dependency management handled");
 
+        // update the config with any changes
+        config.clearManagedVersions();
+        config.clearManagedDependencies();
+        config.updateConfig();
+
         // Happiness
     }
 
@@ -258,6 +263,9 @@ public class DependencyAngel {
             List<ResolvedDependencyDetailsList> workList = calculatePomChanges(conflicts);
             updatePomFile(workList);
 
+            // update the config with any changes
+            config.updateConfig();
+
             if (config.performProcessSingleStep()) {
                 return;
             }
@@ -272,7 +280,7 @@ public class DependencyAngel {
         }
 
         // Update pom.xml
-        PomManipulator pomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
+        PomManipulator pomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()), config);
 
         if (!pomManipulator.hasDependencyManagement()) {
             return;
@@ -352,7 +360,7 @@ public class DependencyAngel {
 
     private void performPomCleanup(String directoryOrPomFilePath) {
         String pomFilePath = getPomFilePath(directoryOrPomFilePath);
-        PomManipulator pomManipulator = new PomManipulator(pomFilePath);
+        PomManipulator pomManipulator = new PomManipulator(pomFilePath, config);
         pomManipulator.stripExclusions(config);
         pomManipulator.stripDependencyAngelDependencies();
         pomManipulator.saveFile(null, "pom cleaned");
@@ -421,7 +429,7 @@ public class DependencyAngel {
 
     private void updatePomFile(List<ResolvedDependencyDetailsList> workList) {
         // Update pom.xml
-        PomManipulator pomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
+        PomManipulator pomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()), config);
 
         // Update dependencies
         for (ResolvedDependencyDetailsList workItem: workList) {
@@ -475,7 +483,7 @@ public class DependencyAngel {
                 // Figure out if we had a conflicted item that brought in multiple versions of this dependency
                 // if we did, we need to explicitly add a dependency to any user of that library
                 for (File nestedPom : nestedPoms) {
-                    PomManipulator nestedManipulator = new PomManipulator(nestedPom.getAbsolutePath());
+                    PomManipulator nestedManipulator = new PomManipulator(nestedPom.getAbsolutePath(), config);
 
                     // Any place we find the dependency, we need to strip out the version
                     // Scan the child poms (maybe we can track those)

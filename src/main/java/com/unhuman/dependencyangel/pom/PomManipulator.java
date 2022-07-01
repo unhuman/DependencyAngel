@@ -1,6 +1,7 @@
 package com.unhuman.dependencyangel.pom;
 
 import com.unhuman.dependencyangel.DependencyAngelConfig;
+import com.unhuman.dependencyangel.StorableAngelConfigData;
 import com.unhuman.dependencyangel.dependency.Dependency;
 import com.unhuman.dependencyangel.versioning.Version;
 import org.w3c.dom.Document;
@@ -26,8 +27,6 @@ public class PomManipulator {
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\r?\\n\\s+");
     private static final Pattern WHITESPACE_SINGLE_NEWLINE_PATTERN = Pattern.compile("(?:\\r?\\n)*(\\r?\\n\\s+)");
     public static final Pattern PROPERTIES_VARIABLE = Pattern.compile("\\$\\{(.*)\\}");
-    private static final String COMMENT_DEPENDENCY_ANGEL_START = "DependencyAngel Start";
-    private static final String COMMENT_DEPENDENCY_ANGEL_END = "DependencyAngel End";
     public static final String PROPERTIES_TAG = "properties";
     public static final String DEPENDENCY_MANAGEMENT_TAG = "dependencyManagement";
     public static final String DEPENDENCIES_TAG = "dependencies";
@@ -58,9 +57,13 @@ public class PomManipulator {
     private String groupId;
     private String artifactId;
 
-    public PomManipulator(String filename) {
+    // .angel.conf file data
+    StorableAngelConfigData storableAngelConfigData;
+
+    public PomManipulator(String filename, StorableAngelConfigData storableAngelConfigData) {
         try {
             this.filename = filename;
+            this.storableAngelConfigData = storableAngelConfigData;
             dirty = false;
 
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -442,15 +445,8 @@ public class PomManipulator {
 
     public void addForcedDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
                                         String classifier, List<Dependency> exclusions) {
-        addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation),
-                dependencyIndentation);
-        addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START),
-                dependencyIndentation);
-
+        storableAngelConfigData.addManagedDependency(groupId + ":" + artifactId);
         addDependencyNode(groupId, artifactId, type, version, scope, classifier, exclusions, true);
-
-        addLastChild(dependenciesNode, document.createTextNode(dependencyIndentation), dependenciesIndentation);
-        addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END), dependenciesIndentation);
     }
 
     private void addDependencyNode(String groupId, String artifactId, String type, Version version,
@@ -646,40 +642,35 @@ public class PomManipulator {
         }
 
         NodeList dependencies = parentNode.getChildNodes();
-        boolean deleting = false;
 
         for (int i = 0; i < dependencies.getLength(); i++) {
             Node node = dependencies.item(i);
 
             while (node != null) {
-                if (Node.COMMENT_NODE == node.getNodeType()) {
-                    if (COMMENT_DEPENDENCY_ANGEL_START.equals(node.getTextContent().trim())) {
-                        if (deleting) {
-                            throw new RuntimeException("Invalid Forced Dependency Start comment tag");
-                        }
-                        // this will be deleted below
-                        deleting = true;
-                    } else if (COMMENT_DEPENDENCY_ANGEL_END.equals(node.getTextContent().trim())) {
-                        if (!deleting) {
-                            throw new RuntimeException("Invalid Forced Dependency End comment tag");
-                        }
-                        // we have to delete this here, because we're going to turn deleting off
-                        deleteNode(node, true);
-                        deleting = false;
-                    }
-                }
-
-                // Track where we are and delete if necessary
                 Node nextNode = node.getNextSibling();
-                if (deleting) {
-                    deleteNode(node, true);
+                if (Node.ELEMENT_NODE == node.getNodeType()) {
+                    // Delete dependencies and stored versions
+                    if (node.getNodeName().equals(DEPENDENCY_TAG)) {
+                        String checkGroupId = getSingleNodeElementText(node, GROUP_ID_TAG, false);
+                        String checkArtifactId = getSingleNodeElementText(node, ARTIFACT_ID_TAG, false);
+                        String compare = checkGroupId + ":" + checkArtifactId;
+                        for (String checkAsset: storableAngelConfigData.getManagedDependencies()) {
+                            if (checkAsset.equals(compare)) {
+                                deleteNode(node, true);
+                                break;
+                            }
+                        }
+                    } else {
+                        for (String checkVersion : storableAngelConfigData.getManagedVersions()) {
+                            if (node.getNodeName().equals(checkVersion)) {
+                                deleteNode(node, true);
+                                break;
+                            }
+                        }
+                    }
                 }
                 node = nextNode;
             }
-        }
-
-        if (deleting) {
-            throw new RuntimeException("Missing Forced Dependency End comment tag");
         }
     }
 
@@ -708,7 +699,7 @@ public class PomManipulator {
      * @param version
      */
     protected String storeVersionInProperties(String groupId, String artifactId, String version,
-                                              boolean needAngelComment) {
+                                              boolean needAngelTracking) {
         if (propertiesNode == null) {
             return version;
         }
@@ -731,18 +722,13 @@ public class PomManipulator {
         } else {
             Node versionProperty = document.createElement(key);
             versionProperty.setTextContent(version);
-            if (needAngelComment) {
-                addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
-                addLastChild(propertiesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START),
-                        propertiesIndent);
+
+            if (needAngelTracking) {
+                storableAngelConfigData.addManagedVersion(key);
             }
+
             addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
             addLastChild(propertiesNode, versionProperty, propertiesIndent);
-            if (needAngelComment) {
-                addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
-                addLastChild(propertiesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END),
-                        propertiesIndent);
-            }
         }
         return String.format("${%s}", key);
     }
