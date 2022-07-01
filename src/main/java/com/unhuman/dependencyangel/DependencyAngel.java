@@ -428,9 +428,11 @@ public class DependencyAngel {
             // If there is a self referential (circular dependency) item in here, we need to manage exclusions
             boolean circularDependency = false;
             for (ResolvedDependencyDetails details: workItem) {
-                // if a top level dependency is this guy - it's our own, so - no version
+                // if a top level dependency is this guy and is the latest version - it's our own, so - no version
+                // TODO: maybe we can check top level artifact, too
                 if (details.getInitialDependency().getGroup().equals(workItem.getGroup())
-                        && details.getInitialDependency().getArtifact().equals(workItem.getArtifact()) ) {
+                        && details.getInitialDependency().getArtifact().equals(workItem.getArtifact())
+                        && details.getInitialDependency().getVersion().equals(workItem.getLatestVersion())) {
                     circularDependency = true;
                     break;
                 }
