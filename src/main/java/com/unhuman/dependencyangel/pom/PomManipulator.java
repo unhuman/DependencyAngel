@@ -40,6 +40,8 @@ public class PomManipulator {
     public static final String VERSION_TAG = "version";
     public static final String EXCLUSIONS_TAG = "exclusions";
     public static final String EXCLUSION_TAG = "exclusion";
+    public static final String PARENT_TAG = "parent";
+
 
     private String filename;
     private Document document;
@@ -74,9 +76,20 @@ public class PomManipulator {
                 throw new RuntimeException("Could not find project node");
             }
 
+            // Get the groupId (or leverage groupId from parent)
             groupId = getSingleNodeElementText(projectNode, GROUP_ID_TAG, false);
+            if (groupId == null) {
+                // get the groupId out of the parent
+                Node parentNode = getSingleNodeElement(projectNode, PARENT_TAG, false);
+                if (parentNode != null) {
+                    groupId = getSingleNodeElementText(parentNode, GROUP_ID_TAG, false);
+                }
+            }
             artifactId = getSingleNodeElementText(projectNode, ARTIFACT_ID_TAG, true);
-            knownArtifacts.add(groupId + ":" + artifactId);
+            String groupIdArtifactId = groupId + ":" + artifactId;
+            if (!knownArtifacts.contains(groupIdArtifactId)) {
+                knownArtifacts.add(groupIdArtifactId);
+            }
 
             // determine indentations
             propertiesNode = findDesiredNode(document.getElementsByTagName(PROPERTIES_TAG), projectNode, projectNode);
