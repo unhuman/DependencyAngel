@@ -7,6 +7,7 @@ import com.unhuman.dependencyangel.convergence.ResolvedDependencyDetails;
 import com.unhuman.dependencyangel.convergence.ResolvedDependencyDetailsList;
 import com.unhuman.dependencyangel.dependency.ArtifactHelper;
 import com.unhuman.dependencyangel.dependency.Dependency;
+import com.unhuman.dependencyangel.exceptions.AngelException;
 import com.unhuman.dependencyangel.pom.PomManipulator;
 import com.unhuman.dependencyangel.versioning.Version;
 import com.unhuman.dependencyangel.versioning.VersionHelper;
@@ -607,6 +608,9 @@ public class DependencyAngel {
             angel.setupDependencyManagement();
             angel.process();
             angel.exclusionReduction();
+        } catch (AngelException ae) {
+            System.err.println(ae.getMessage());
+            exit(-1);
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace(System.err);

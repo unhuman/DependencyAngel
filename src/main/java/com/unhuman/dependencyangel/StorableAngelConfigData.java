@@ -1,6 +1,8 @@
 package com.unhuman.dependencyangel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.unhuman.dependencyangel.exceptions.AngelException;
 import net.sourceforge.argparse4j.inf.Namespace;
 
 import java.io.File;
@@ -96,9 +98,11 @@ public class StorableAngelConfigData {
 
             StorableAngelConfigData item = OBJECT_MAPPER.readValue(configFile, StorableAngelConfigData.class);
             return item;
+        } catch (UnrecognizedPropertyException upe) {
+            throw new AngelException("Could not load config: " + configFilePath,
+                    upe.getMessage(), "Upgrade Dependency Angel.");
         } catch (Exception e) {
-            System.out.println("Could not load config: " + configFilePath + ": " + e.getMessage());
-            return null;
+            throw new AngelException("Could not load config: " + configFilePath, e.getMessage(), null);
         }
     }
 
