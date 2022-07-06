@@ -13,25 +13,30 @@ public class StorableAngelConfigData {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private Set<String> bannedDependencies;
     private Set<String> preserveExclusions;
+    private Set<String> nonSemanticVersioning;
 
     protected StorableAngelConfigData() {
         this.bannedDependencies = Collections.emptySet();
         this.preserveExclusions = Collections.emptySet();
+        this.nonSemanticVersioning = Collections.emptySet();
     }
 
     private StorableAngelConfigData(StorableAngelConfigData copy) {
         this.bannedDependencies = copy.bannedDependencies;
         this.preserveExclusions = copy.preserveExclusions;
+        this.nonSemanticVersioning = copy.nonSemanticVersioning;
     }
 
     protected void setup(Namespace ns, String projectDirectory) {
         bannedDependencies = getDependenciesSet(ns, "banned");
         preserveExclusions = getDependenciesSet(ns, "preserveExclusions");
+        nonSemanticVersioning = getDependenciesSet(ns, "nonSemanticVersioning");
 
         StorableAngelConfigData fileConfig = loadConfig(projectDirectory);
         if (fileConfig != null) {
             bannedDependencies.addAll(fileConfig.getBannedDependencies());
             preserveExclusions.addAll(fileConfig.getPreserveExclusions());
+            nonSemanticVersioning.addAll(fileConfig.getNonSemanticVersioning());
         }
 
         // TODO: Only update if there's a change
@@ -44,6 +49,10 @@ public class StorableAngelConfigData {
 
     public Set<String> getPreserveExclusions() {
         return Collections.unmodifiableSet(preserveExclusions);
+    }
+
+    public Set<String> getNonSemanticVersioning() {
+        return Collections.unmodifiableSet(nonSemanticVersioning);
     }
 
     private Set<String> getDependenciesSet(Namespace ns, String itemExtract) {

@@ -27,7 +27,7 @@ public class DependencyConflictData extends Dependency {
     }
 
     public boolean containsDependency(Dependency dependency) {
-        if (getGroup().equals(dependency.getGroup()) && getArtifact().equals(dependency.getArtifact())) {
+        if (getGroupId().equals(dependency.getGroupId()) && getArtifactId().equals(dependency.getArtifactId())) {
             return true;
         }
 

@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Dependency {
-    private String group;
-    private String artifact;
+    private String groupId;
+    private String artifactId;
     private String classifier;
     private String scope;
     private String type;
@@ -21,18 +21,18 @@ public class Dependency {
 
         if (details.length == 3) {
             int i = 0;
-            group = details[i++];
-            artifact = details[i++];
+            groupId = details[i++];
+            artifactId = details[i++];
             type = null;
-            version = new Version(details[i++]);
+            version = new Version(groupId, artifactId, details[i++]);
         } else if (details.length < 4) {
                 throw new RuntimeException("Invalid Dependency Data: " + String.join(":", data));
         } else {
             int i = 0;
-            group = details[i++];
-            artifact = details[i++];
+            groupId = details[i++];
+            artifactId = details[i++];
             type = details[i++];
-            version = new Version(details[i++]);
+            version = new Version(groupId, artifactId, details[i++]);
             if (details.length >= 5) {
                 scope = details[i++];
             }
@@ -40,8 +40,8 @@ public class Dependency {
     }
 
     protected Dependency(Dependency dependency) {
-        this.group = dependency.getGroup();
-        this.artifact = dependency.getArtifact();
+        this.groupId = dependency.getGroupId();
+        this.artifactId = dependency.getArtifactId();
         this.classifier = dependency.getClassifier();
         this.type = dependency.getType();
         this.scope = dependency.getScope();
@@ -60,20 +60,20 @@ public class Dependency {
         if (artifactId == null || artifactId.isBlank()) {
             throw new RuntimeException("Missing dependency artifactId");
         }
-        this.group = groupId;
-        this.artifact = artifactId;
+        this.groupId = groupId;
+        this.artifactId = artifactId;
         this.type = type;
         this.version = version;
         this.scope = scope;
         this.classifier = classifier;
     }
 
-    public String getGroup() {
-        return group;
+    public String getGroupId() {
+        return groupId;
     }
 
-    public String getArtifact() {
-        return artifact;
+    public String getArtifactId() {
+        return artifactId;
     }
 
     public String getType() {
@@ -100,11 +100,11 @@ public class Dependency {
     }
 
     public boolean matchingArtifact(Dependency other) {
-        return (this.getGroup().equals(other.getGroup()) && this.getArtifact().equals(other.getArtifact()));
+        return (this.getGroupId().equals(other.getGroupId()) && this.getArtifactId().equals(other.getArtifactId()));
     }
 
     public String getDisplayName() {
-        return String.format("%s:%s", getGroup(), getArtifact());
+        return String.format("%s:%s", getGroupId(), getArtifactId());
     }
 
     public List<Dependency> getExclusions() {

@@ -346,7 +346,7 @@ public class PomManipulator {
      * @return
      */
     public boolean updateExplicitVersion(Dependency dependency) {
-        return updateExplicitVersion(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
+        return updateExplicitVersion(dependency.getGroupId(), dependency.getArtifactId(), dependency.getType(),
                 dependency.getVersion(), dependency.getScope(), dependency.getClassifier(),
                 dependency.getExclusions());
     }
@@ -446,7 +446,7 @@ public class PomManipulator {
     }
 
     public void addDependencyNode(Dependency dependency) {
-        addDependencyNode(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
+        addDependencyNode(dependency.getGroupId(), dependency.getArtifactId(), dependency.getType(),
                 dependency.getVersion(), dependency.getScope(), dependency.getClassifier(), dependency.getExclusions());
     }
 
@@ -456,7 +456,7 @@ public class PomManipulator {
     }
 
     public void addForcedDependencyNode(Dependency dependency) {
-        addForcedDependencyNode(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
+        addForcedDependencyNode(dependency.getGroupId(), dependency.getArtifactId(), dependency.getType(),
                 dependency.getVersion(), dependency.getScope(), dependency.getClassifier(), dependency.getExclusions());
     }
 
@@ -561,8 +561,8 @@ public class PomManipulator {
                 Node groupIdNode = findChildElement(existingExclusionNode, GROUP_ID_TAG);
                 Node artifactIdNode = findChildElement(existingExclusionNode, ARTIFACT_ID_TAG);
 
-                if (exclusion.getGroup().equals(groupIdNode.getTextContent())
-                        && exclusion.getArtifact().equals(artifactIdNode.getTextContent())) {
+                if (exclusion.getGroupId().equals(groupIdNode.getTextContent())
+                        && exclusion.getArtifactId().equals(artifactIdNode.getTextContent())) {
                     foundExclusion = true;
                     break;
                 }
@@ -578,11 +578,11 @@ public class PomManipulator {
                 String dataIndentation = exclusionIndentation + nestedIndentation;
                 newExclusionNode.appendChild(document.createTextNode(dataIndentation));
                 Node newGroupIdNode = document.createElement(GROUP_ID_TAG);
-                newGroupIdNode.setTextContent(exclusion.getGroup());
+                newGroupIdNode.setTextContent(exclusion.getGroupId());
                 newExclusionNode.appendChild(newGroupIdNode);
                 newExclusionNode.appendChild(document.createTextNode(dataIndentation));
                 Node newArtifactIdNode = document.createElement(ARTIFACT_ID_TAG);
-                newArtifactIdNode.setTextContent(exclusion.getArtifact());
+                newArtifactIdNode.setTextContent(exclusion.getArtifactId());
                 newExclusionNode.appendChild(newArtifactIdNode);
 
                 // white space before the closing exclusion tag

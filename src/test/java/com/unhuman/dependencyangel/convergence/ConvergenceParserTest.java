@@ -24,8 +24,8 @@ public class ConvergenceParserTest {
         assertEquals(1, conflicts.size());
 
         DependencyConflict conflict = conflicts.get(0);
-        assertEquals("org.jboss.logging", conflict.getGroup());
-        assertEquals("jboss-logging", conflict.getArtifact());
+        assertEquals("org.jboss.logging", conflict.getGroupId());
+        assertEquals("jboss-logging", conflict.getArtifactId());
 
         List<DependencyConflictData> conflictHierarchy = conflict.getConflictHierarchy();
         assertEquals(4, conflictHierarchy.size());
@@ -36,95 +36,95 @@ public class ConvergenceParserTest {
 
         // 1st item
         conflictData = conflictHierarchy.get(conflictCounter++);
-        assertEquals("com.unhuman", conflictData.getGroup());
-        assertEquals("CouchbaseUI", conflictData.getArtifact());
+        assertEquals("com.unhuman", conflictData.getGroupId());
+        assertEquals("CouchbaseUI", conflictData.getArtifactId());
 
         details = conflictData.getEndDependencyInfo();
         assertEquals(1, details.size());
-        assertEquals("com.codingrodent", details.getInitialDependency().getGroup());
-        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifact());
-        assertEquals("org.jboss.logging", details.get(0).getGroup());
-        assertEquals("jboss-logging", details.get(0).getArtifact());
+        assertEquals("com.codingrodent", details.getInitialDependency().getGroupId());
+        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifactId());
+        assertEquals("org.jboss.logging", details.get(0).getGroupId());
+        assertEquals("jboss-logging", details.get(0).getArtifactId());
 
         conflictData = conflictHierarchy.get(0);
-        assertEquals("com.unhuman", conflictData.getGroup());
-        assertEquals("CouchbaseUI", conflictData.getArtifact());
+        assertEquals("com.unhuman", conflictData.getGroupId());
+        assertEquals("CouchbaseUI", conflictData.getArtifactId());
 
         details = conflictData.getEndDependencyInfo();
         assertEquals(1, details.size());
-        assertEquals("com.codingrodent", details.getInitialDependency().getGroup());
-        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifact());
-        assertEquals("org.jboss.logging", details.get(0).getGroup());
-        assertEquals("jboss-logging", details.get(0).getArtifact());
+        assertEquals("com.codingrodent", details.getInitialDependency().getGroupId());
+        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifactId());
+        assertEquals("org.jboss.logging", details.get(0).getGroupId());
+        assertEquals("jboss-logging", details.get(0).getArtifactId());
 
         // 2nd item - same hierarchy as first
         conflictData = conflictHierarchy.get(conflictCounter++);
-        assertEquals("com.unhuman", conflictData.getGroup());
-        assertEquals("CouchbaseUI", conflictData.getArtifact());
+        assertEquals("com.unhuman", conflictData.getGroupId());
+        assertEquals("CouchbaseUI", conflictData.getArtifactId());
 
         details = conflictData.getEndDependencyInfo();
         assertEquals(1, details.size());
-        assertEquals("com.codingrodent", details.getInitialDependency().getGroup());
-        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifact());
-        assertEquals("org.jboss.logging", details.get(0).getGroup());
-        assertEquals("jboss-logging", details.get(0).getArtifact());
+        assertEquals("com.codingrodent", details.getInitialDependency().getGroupId());
+        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifactId());
+        assertEquals("org.jboss.logging", details.get(0).getGroupId());
+        assertEquals("jboss-logging", details.get(0).getArtifactId());
 
         conflictData = conflictHierarchy.get(0);
-        assertEquals("com.unhuman", conflictData.getGroup());
-        assertEquals("CouchbaseUI", conflictData.getArtifact());
+        assertEquals("com.unhuman", conflictData.getGroupId());
+        assertEquals("CouchbaseUI", conflictData.getArtifactId());
 
         details = conflictData.getEndDependencyInfo();
         assertEquals(1, details.size());
-        assertEquals("com.codingrodent", details.getInitialDependency().getGroup());
-        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifact());
-        assertEquals("org.jboss.logging", details.get(0).getGroup());
-        assertEquals("jboss-logging", details.get(0).getArtifact());
+        assertEquals("com.codingrodent", details.getInitialDependency().getGroupId());
+        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifactId());
+        assertEquals("org.jboss.logging", details.get(0).getGroupId());
+        assertEquals("jboss-logging", details.get(0).getArtifactId());
 
         // 3rd item - same hierarchy as first
         conflictData = conflictHierarchy.get(conflictCounter++);
-        assertEquals("com.unhuman", conflictData.getGroup());
-        assertEquals("CouchbaseUI", conflictData.getArtifact());
+        assertEquals("com.unhuman", conflictData.getGroupId());
+        assertEquals("CouchbaseUI", conflictData.getArtifactId());
 
         details = conflictData.getEndDependencyInfo();
         assertEquals(1, details.size());
-        assertEquals("com.codingrodent", details.getInitialDependency().getGroup());
-        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifact());
-        assertEquals("org.jboss.logging", details.get(0).getGroup());
-        assertEquals("jboss-logging", details.get(0).getArtifact());
+        assertEquals("com.codingrodent", details.getInitialDependency().getGroupId());
+        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifactId());
+        assertEquals("org.jboss.logging", details.get(0).getGroupId());
+        assertEquals("jboss-logging", details.get(0).getArtifactId());
 
         conflictData = conflictHierarchy.get(0);
-        assertEquals("com.unhuman", conflictData.getGroup());
-        assertEquals("CouchbaseUI", conflictData.getArtifact());
+        assertEquals("com.unhuman", conflictData.getGroupId());
+        assertEquals("CouchbaseUI", conflictData.getArtifactId());
 
         details = conflictData.getEndDependencyInfo();
         assertEquals(1, details.size());
-        assertEquals("com.codingrodent", details.getInitialDependency().getGroup());
-        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifact());
-        assertEquals("org.jboss.logging", details.get(0).getGroup());
-        assertEquals("jboss-logging", details.get(0).getArtifact());
+        assertEquals("com.codingrodent", details.getInitialDependency().getGroupId());
+        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifactId());
+        assertEquals("org.jboss.logging", details.get(0).getGroupId());
+        assertEquals("jboss-logging", details.get(0).getArtifactId());
 
         // 4th item - direct dependency
         conflictData = conflictHierarchy.get(conflictCounter++);
-        assertEquals("com.unhuman", conflictData.getGroup());
-        assertEquals("CouchbaseUI", conflictData.getArtifact());
+        assertEquals("com.unhuman", conflictData.getGroupId());
+        assertEquals("CouchbaseUI", conflictData.getArtifactId());
 
         details = conflictData.getEndDependencyInfo();
         assertEquals(1, details.size());
-        assertEquals("org.jboss.logging", details.getInitialDependency().getGroup());
-        assertEquals("jboss-logging", details.getInitialDependency().getArtifact());
-        assertEquals("org.jboss.logging", details.get(0).getGroup());
-        assertEquals("jboss-logging", details.get(0).getArtifact());
+        assertEquals("org.jboss.logging", details.getInitialDependency().getGroupId());
+        assertEquals("jboss-logging", details.getInitialDependency().getArtifactId());
+        assertEquals("org.jboss.logging", details.get(0).getGroupId());
+        assertEquals("jboss-logging", details.get(0).getArtifactId());
 
         conflictData = conflictHierarchy.get(0);
-        assertEquals("com.unhuman", conflictData.getGroup());
-        assertEquals("CouchbaseUI", conflictData.getArtifact());
+        assertEquals("com.unhuman", conflictData.getGroupId());
+        assertEquals("CouchbaseUI", conflictData.getArtifactId());
 
         details = conflictData.getEndDependencyInfo();
         assertEquals(1, details.size());
-        assertEquals("com.codingrodent", details.getInitialDependency().getGroup());
-        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifact());
-        assertEquals("org.jboss.logging", details.get(0).getGroup());
-        assertEquals("jboss-logging", details.get(0).getArtifact());
+        assertEquals("com.codingrodent", details.getInitialDependency().getGroupId());
+        assertEquals("jackson-json-crypto", details.getInitialDependency().getArtifactId());
+        assertEquals("org.jboss.logging", details.get(0).getGroupId());
+        assertEquals("jboss-logging", details.get(0).getArtifactId());
 
     }
 
@@ -136,8 +136,8 @@ public class ConvergenceParserTest {
         assertEquals(5, conflicts.size());
 
         DependencyConflict conflict = conflicts.get(0);
-        assertEquals("org.slf4j", conflict.getGroup());
-        assertEquals("slf4j-api", conflict.getArtifact());
+        assertEquals("org.slf4j", conflict.getGroupId());
+        assertEquals("slf4j-api", conflict.getArtifactId());
 
         List<DependencyConflictData> conflictHierarchy = conflict.getConflictHierarchy();
         assertEquals(4, conflictHierarchy.size());
