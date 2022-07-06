@@ -673,6 +673,9 @@ public class PomManipulator {
             Node node = dependencies.item(i);
 
             while (node != null) {
+                // Track where we are and delete if necessary
+                Node nextNode = node.getNextSibling();
+
                 if (Node.COMMENT_NODE == node.getNodeType()) {
                     if (COMMENT_DEPENDENCY_ANGEL_START.equals(node.getTextContent().trim())) {
                         if (deleting) {
@@ -690,8 +693,6 @@ public class PomManipulator {
                     }
                 }
 
-                // Track where we are and delete if necessary
-                Node nextNode = node.getNextSibling();
                 if (deleting) {
                     deleteNode(node, true);
                 }
