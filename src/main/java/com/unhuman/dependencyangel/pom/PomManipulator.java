@@ -1,6 +1,7 @@
 package com.unhuman.dependencyangel.pom;
 
 import com.unhuman.dependencyangel.DependencyAngelConfig;
+import com.unhuman.dependencyangel.dependency.ArtifactHelper;
 import com.unhuman.dependencyangel.dependency.Dependency;
 import com.unhuman.dependencyangel.versioning.Version;
 import org.w3c.dom.Document;
@@ -86,7 +87,7 @@ public class PomManipulator {
                 }
             }
             artifactId = getSingleNodeElementText(projectNode, ARTIFACT_ID_TAG, true);
-            String groupIdArtifactId = groupId + ":" + artifactId;
+            String groupIdArtifactId = ArtifactHelper.getArtifactIdGroupIdString(groupId, artifactId);
             if (!knownArtifacts.contains(groupIdArtifactId)) {
                 knownArtifacts.add(groupIdArtifactId);
             }
@@ -133,7 +134,7 @@ public class PomManipulator {
     }
 
     public static boolean isKnownArtifact(String groupId, String artifactId) {
-        String artifact = groupId + ":" + artifactId;
+        String artifact = ArtifactHelper.getArtifactIdGroupIdString(groupId, artifactId);
         return knownArtifacts.contains(artifact);
     }
 

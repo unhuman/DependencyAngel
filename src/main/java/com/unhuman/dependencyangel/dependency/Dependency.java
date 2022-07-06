@@ -104,7 +104,7 @@ public class Dependency {
     }
 
     public String getDisplayName() {
-        return String.format("%s:%s", getGroupId(), getArtifactId());
+        return ArtifactHelper.getArtifactIdGroupIdString(getGroupId(), getArtifactId());
     }
 
     public List<Dependency> getExclusions() {

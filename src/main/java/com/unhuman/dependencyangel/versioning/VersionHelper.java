@@ -1,5 +1,7 @@
 package com.unhuman.dependencyangel.versioning;
 
+import com.unhuman.dependencyangel.dependency.ArtifactHelper;
+
 import java.util.Set;
 
 public class VersionHelper {
@@ -10,7 +12,7 @@ public class VersionHelper {
     }
 
     public boolean useSemanticVersioning(String groupId, String artifactId) {
-        return useSemanticVersioning(groupId + ":" + artifactId);
+        return useSemanticVersioning(ArtifactHelper.getArtifactIdGroupIdString(groupId, artifactId));
     }
 
     public boolean useSemanticVersioning(String groupIdArtifactId) {

@@ -5,6 +5,7 @@ import com.unhuman.dependencyangel.convergence.DependencyConflict;
 import com.unhuman.dependencyangel.convergence.DependencyConflictData;
 import com.unhuman.dependencyangel.convergence.ResolvedDependencyDetails;
 import com.unhuman.dependencyangel.convergence.ResolvedDependencyDetailsList;
+import com.unhuman.dependencyangel.dependency.ArtifactHelper;
 import com.unhuman.dependencyangel.dependency.Dependency;
 import com.unhuman.dependencyangel.pom.PomManipulator;
 import com.unhuman.dependencyangel.versioning.Version;
@@ -186,7 +187,7 @@ public class DependencyAngel {
                                 (exclusionNode, ARTIFACT_ID_TAG, true).getTextContent();
                         // This check will not miss if clean has occurred.
                         if (preserveExclusions.contains(
-                                String.format("%s:%s", exclusionGroupId, exclusionArtifactId))) {
+                                ArtifactHelper.getArtifactIdGroupIdString(exclusionGroupId, exclusionArtifactId))) {
                             exclusions.add(new Dependency(exclusionGroupId, exclusionArtifactId));
                         }
                         // We delete all the exclusions below, so we don't need to do this.
@@ -394,7 +395,7 @@ public class DependencyAngel {
                     List<String> checkInclusions = new ArrayList<>();
                     for (DependencyConflictData data2: currentConflict.getConflictHierarchy()) {
                         if (data2.getEndDependencyInfo() != null) {
-                            checkInclusions.add(String.format("%s:%s",
+                            checkInclusions.add(ArtifactHelper.getArtifactIdGroupIdString(
                                     data2.getEndDependencyInfo().getInitialDependency().getGroupId(),
                                     data2.getEndDependencyInfo().getInitialDependency().getArtifactId()));
                         }
