@@ -1,5 +1,7 @@
 package com.unhuman.dependencyangel.versioning;
 
+import java.util.Objects;
+
 public class Version implements Comparable {
     private static final int LEFT_GREATER = 1;
     private static final int RIGHT_GREATER = -1;
@@ -154,6 +156,16 @@ public class Version implements Comparable {
         // We have to use something for this element, so...  Just string compare
         int compareResult = left.compareTo(right);
         return (compareResult == 0) ? 0 : compareResult / Math.abs(compareResult);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return (this.compareTo(obj) == 0);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(version);
     }
 
     public String toString() {

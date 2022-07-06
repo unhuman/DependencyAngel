@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -383,9 +384,14 @@ public class DependencyAngel {
         while (dependencyProcessState.hasNext()) {
             DependencyConflict currentConflict = dependencyProcessState.next();
 
-            System.out.println("Processing conflict: " + currentConflict.getDisplayName()
-                    + " to version: " + currentConflict.getVersion()
-                    + " with scope: " + currentConflict.getScope());
+            // get all the conflicted versions
+            Set<Version> conflictedVersions = getConflictedVersions(currentConflict);
+            conflictedVersions.remove(currentConflict.getVersion());
+
+            System.out.println(String.format("Processing conflict: %s to version: %s with scope: %s;"
+                    + " other versions: (%s)", currentConflict.getDisplayName(), currentConflict.getVersion(),
+                    currentConflict.getScope(), String.join(
+                            ", ", conflictedVersions.stream().map(e -> e.toString()).collect(Collectors.toSet()))));
 
             // Determine actions to be performed
             ResolvedDependencyDetailsList workToDo = new ResolvedDependencyDetailsList();
@@ -428,6 +434,13 @@ public class DependencyAngel {
             }
         }
         return workList;
+    }
+
+    private Set<Version> getConflictedVersions(DependencyConflict dependencyConflict) {
+        Set<Version> results = new TreeSet<>();
+        dependencyConflict.getConflictHierarchy().forEach(conflictHierarchy ->
+                        results.addAll(conflictHierarchy.getEndDependencyInfo().getAllVersions()));
+        return results;
     }
 
     private void updatePomFile(List<ResolvedDependencyDetailsList> workList) {
