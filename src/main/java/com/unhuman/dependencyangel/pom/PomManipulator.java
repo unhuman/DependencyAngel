@@ -28,6 +28,8 @@ public class PomManipulator {
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\r?\\n\\s+");
     private static final Pattern WHITESPACE_SINGLE_NEWLINE_PATTERN = Pattern.compile("(?:\\r?\\n)*(\\r?\\n\\s+)");
     public static final Pattern PROPERTIES_VARIABLE = Pattern.compile("\\$\\{(.*)\\}");
+    private static final String COMMENT_DEPENDENCY_ANGEL_START = "DependencyAngel Start";
+    private static final String COMMENT_DEPENDENCY_ANGEL_END = "DependencyAngel End";
     public static final String PROPERTIES_TAG = "properties";
     public static final String DEPENDENCY_MANAGEMENT_TAG = "dependencyManagement";
     public static final String DEPENDENCIES_TAG = "dependencies";
@@ -460,8 +462,18 @@ public class PomManipulator {
     }
 
     public void addForcedDependencyNode(Dependency dependency) {
+        addForcedDependencyComment(dependenciesNode, dependencyIndentation, dependencyIndentation,
+                COMMENT_DEPENDENCY_ANGEL_START);
         addForcedDependencyNode(dependency.getGroupId(), dependency.getArtifactId(), dependency.getType(),
                 dependency.getVersion(), dependency.getScope(), dependency.getClassifier(), dependency.getExclusions());
+        addForcedDependencyComment(dependenciesNode, dependenciesIndentation, dependencyIndentation,
+                COMMENT_DEPENDENCY_ANGEL_START);
+    }
+
+    public void addForcedDependencyComment(Node parentNode, String parentIndentation,
+                                           String indentation, String comment) {
+        addLastChild(parentNode, document.createTextNode(indentation), parentIndentation);
+        addLastChild(parentNode, document.createComment(comment), parentIndentation);
     }
 
     public void addForcedDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
@@ -663,6 +675,7 @@ public class PomManipulator {
         }
 
         NodeList dependencies = parentNode.getChildNodes();
+        boolean deletingLegacyCommentedData = false;
 
         for (int i = 0; i < dependencies.getLength(); i++) {
             Node node = dependencies.item(i);
@@ -670,7 +683,27 @@ public class PomManipulator {
             while (node != null) {
                 // Track where we are and delete if necessary
                 Node nextNode = node.getNextSibling();
-                if (Node.ELEMENT_NODE == node.getNodeType()) {
+
+                if (deletingLegacyCommentedData || Node.COMMENT_NODE == node.getNodeType()) { // Old way (comments)
+                    if (COMMENT_DEPENDENCY_ANGEL_START.equals(node.getTextContent().trim())) {
+                        if (deletingLegacyCommentedData) {
+                            throw new RuntimeException("Invalid Forced Dependency Start comment tag");
+                        }
+                        // this will be deleted below
+                        deletingLegacyCommentedData = true;
+                    } else if (COMMENT_DEPENDENCY_ANGEL_END.equals(node.getTextContent().trim())) {
+                        if (!deletingLegacyCommentedData) {
+                            throw new RuntimeException("Invalid Forced Dependency End comment tag");
+                        }
+                        // we have to delete this here, because we're going to turn deleting off
+                        deleteNode(node, true);
+                        deletingLegacyCommentedData = false;
+                    }
+
+                    if (deletingLegacyCommentedData) {
+                        deleteNode(node, true);
+                    }
+                } else if (Node.ELEMENT_NODE == node.getNodeType()) { // New way
                     // Delete dependencies and stored versions
                     if (node.getNodeName().equals(DEPENDENCY_TAG)) {
                         String checkGroupId = getSingleNodeElementText(node, GROUP_ID_TAG, false);
@@ -692,6 +725,11 @@ public class PomManipulator {
                     }
                 }
                 node = nextNode;
+            }
+
+            // Ensure the comments around data match
+            if (deletingLegacyCommentedData) {
+                throw new RuntimeException("Missing Forced Dependency End comment tag");
             }
         }
     }
@@ -746,11 +784,18 @@ public class PomManipulator {
             versionProperty.setTextContent(version);
 
             if (needAngelTracking) {
+                addForcedDependencyComment(propertiesNode, propertiesIndent,
+                        versionIndent, COMMENT_DEPENDENCY_ANGEL_START);
                 storableAngelConfigData.addManagedVersion(key);
             }
 
             addLastChild(propertiesNode, document.createTextNode(versionIndent), propertiesIndent);
             addLastChild(propertiesNode, versionProperty, propertiesIndent);
+
+            if (needAngelTracking) {
+                addForcedDependencyComment(propertiesNode, propertiesIndent,
+                        versionIndent, COMMENT_DEPENDENCY_ANGEL_END);
+            }
         }
         return String.format("${%s}", key);
     }
