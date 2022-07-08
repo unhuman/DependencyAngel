@@ -17,14 +17,14 @@ public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyD
     public boolean add(ResolvedDependencyDetails resolvedDependencyDetails) {
         // don't allow adding a duplicate start / end item
         for (ResolvedDependencyDetails currentItem: this) {
-            if (currentItem.getInitialDependency().getGroup()
-                    .equals(resolvedDependencyDetails.getInitialDependency().getGroup())
-                && currentItem.getInitialDependency().getArtifact()
-                    .equals(resolvedDependencyDetails.getInitialDependency().getArtifact())
-                && currentItem.get(0).getGroup()
-                    .equals(resolvedDependencyDetails.get(0).getGroup())
-                && currentItem.get(0).getArtifact()
-                    .equals(resolvedDependencyDetails.get(0).getArtifact())) {
+            if (currentItem.getInitialDependency().getGroupId()
+                    .equals(resolvedDependencyDetails.getInitialDependency().getGroupId())
+                && currentItem.getInitialDependency().getArtifactId()
+                    .equals(resolvedDependencyDetails.getInitialDependency().getArtifactId())
+                && currentItem.get(0).getGroupId()
+                    .equals(resolvedDependencyDetails.get(0).getGroupId())
+                && currentItem.get(0).getArtifactId()
+                    .equals(resolvedDependencyDetails.get(0).getArtifactId())) {
 
                 // We add this dependency to the existing item so that it knows it has multiple
                 currentItem.addAll(resolvedDependencyDetails);
@@ -126,10 +126,10 @@ public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyD
     }
 
     public String getGroup() {
-        return this.get(0).get(0).getGroup();
+        return this.get(0).get(0).getGroupId();
     }
 
     public String getArtifact() {
-        return this.get(0).get(0).getArtifact();
+        return this.get(0).get(0).getArtifactId();
     }
 }

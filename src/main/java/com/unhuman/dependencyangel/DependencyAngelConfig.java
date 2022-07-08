@@ -50,6 +50,11 @@ public class DependencyAngelConfig extends StorableAngelConfigData {
                 .setDefault(Mode.All)
                 .help("Mode how to operate (All, SetupOnly, Continue, " +
                         "ProcessOnly, ProcessSingleStep, or ExclusionReduction).");
+        parser.addArgument("-n", "--nonSemanticVersioning")
+                .type(String.class)
+                .metavar("<groupId:artifactId,...>")
+                .required(false)
+                .help("Non-semantic versioning known for this component.");
         parser.addArgument("-p", "--preserveExclusions")
                 .type(String.class)
                 .metavar("<groupId:artifactId,...>")

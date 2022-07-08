@@ -1,6 +1,8 @@
 package com.unhuman.dependencyangel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.unhuman.dependencyangel.exceptions.AngelException;
 import net.sourceforge.argparse4j.inf.Namespace;
 
 import java.io.File;
@@ -16,6 +18,7 @@ public class StorableAngelConfigData {
     private String path = null;
     private Set<String> bannedDependencies;
     private Set<String> preserveExclusions;
+    private Set<String> nonSemanticVersioning;
     private List<String> managedVersions;
     private List<String> managedDependencies;
     private boolean dirty = true;
@@ -23,6 +26,7 @@ public class StorableAngelConfigData {
     protected StorableAngelConfigData() {
         this.bannedDependencies = Collections.emptySet();
         this.preserveExclusions = Collections.emptySet();
+        this.nonSemanticVersioning = Collections.emptySet();
         this.managedVersions = new ArrayList<>();
         this.managedDependencies = new ArrayList<>();
     }
@@ -30,6 +34,7 @@ public class StorableAngelConfigData {
     private StorableAngelConfigData(StorableAngelConfigData copy) {
         this.bannedDependencies = copy.bannedDependencies;
         this.preserveExclusions = copy.preserveExclusions;
+        this.nonSemanticVersioning = copy.nonSemanticVersioning;
         this.managedVersions = copy.managedVersions;
         this.managedDependencies = copy.managedDependencies;
     }
@@ -38,11 +43,13 @@ public class StorableAngelConfigData {
         path = projectDirectory;
         bannedDependencies = getDependenciesSet(ns, "banned");
         preserveExclusions = getDependenciesSet(ns, "preserveExclusions");
+        nonSemanticVersioning = getDependenciesSet(ns, "nonSemanticVersioning");
 
         StorableAngelConfigData fileConfig = loadConfig(projectDirectory);
         if (fileConfig != null) {
             bannedDependencies.addAll(fileConfig.getBannedDependencies());
             preserveExclusions.addAll(fileConfig.getPreserveExclusions());
+            nonSemanticVersioning.addAll(fileConfig.getNonSemanticVersioning());
             managedVersions.addAll(fileConfig.getManagedVersions());
             managedDependencies.addAll(fileConfig.getManagedDependencies());
         }
@@ -57,6 +64,10 @@ public class StorableAngelConfigData {
 
     public Set<String> getPreserveExclusions() {
         return Collections.unmodifiableSet(preserveExclusions);
+    }
+
+    public Set<String> getNonSemanticVersioning() {
+        return Collections.unmodifiableSet(nonSemanticVersioning);
     }
 
     public void clearManagedVersions() {
@@ -142,9 +153,11 @@ public class StorableAngelConfigData {
 
             StorableAngelConfigData item = OBJECT_MAPPER.readValue(configFile, StorableAngelConfigData.class);
             return item;
+        } catch (UnrecognizedPropertyException upe) {
+            throw new AngelException("Could not load config: " + configFilePath,
+                    upe.getMessage(), "Upgrade Dependency Angel.");
         } catch (Exception e) {
-            System.out.println("Could not load config: " + configFilePath + ": " + e.getMessage());
-            return null;
+            throw new AngelException("Could not load config: " + configFilePath, e.getMessage(), null);
         }
     }
 

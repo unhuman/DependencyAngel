@@ -5,9 +5,12 @@ import com.unhuman.dependencyangel.convergence.DependencyConflict;
 import com.unhuman.dependencyangel.convergence.DependencyConflictData;
 import com.unhuman.dependencyangel.convergence.ResolvedDependencyDetails;
 import com.unhuman.dependencyangel.convergence.ResolvedDependencyDetailsList;
+import com.unhuman.dependencyangel.dependency.ArtifactHelper;
 import com.unhuman.dependencyangel.dependency.Dependency;
+import com.unhuman.dependencyangel.exceptions.AngelException;
 import com.unhuman.dependencyangel.pom.PomManipulator;
 import com.unhuman.dependencyangel.versioning.Version;
+import com.unhuman.dependencyangel.versioning.VersionHelper;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
@@ -25,6 +28,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -154,7 +158,7 @@ public class DependencyAngel {
                         // If we find a version property, but can't lookup the value, then we can assume
                         // this is a project-level dependency.
                     }
-                    version = (versionText != null) ? new Version(versionText) : null;
+                    version = (versionText != null) ? new Version(groupId, artifactId, versionText) : null;
                 }
 
                 // No version - we don't process this
@@ -185,7 +189,7 @@ public class DependencyAngel {
                                 (exclusionNode, ARTIFACT_ID_TAG, true).getTextContent();
                         // This check will not miss if clean has occurred.
                         if (preserveExclusions.contains(
-                                String.format("%s:%s", exclusionGroupId, exclusionArtifactId))) {
+                                ArtifactHelper.getArtifactIdGroupIdString(exclusionGroupId, exclusionArtifactId))) {
                             exclusions.add(new Dependency(exclusionGroupId, exclusionArtifactId));
                         }
                         // We delete all the exclusions below, so we don't need to do this.
@@ -232,6 +236,14 @@ public class DependencyAngel {
     protected void process() {
         if (!config.performProcess()) {
             return;
+        }
+
+        // Read in all the pom files to build up the static state of knowing internal artifacts
+        // TODO: Improve this!
+        new PomManipulator(getPomFilePath(config.getDirectory()), config);
+        // build up a list of subdirectories with pom.xml in them
+        for (File nestedPom: nestedPoms) {
+            new PomManipulator(nestedPom.getAbsolutePath(), config);
         }
 
         File directoryFile = prepareOperation(config.getDirectory());
@@ -317,8 +329,8 @@ public class DependencyAngel {
                         pomManipulator.getSingleNodeElement(exclusionNode, ARTIFACT_ID_TAG, true).getTextContent();
 
                 for (Dependency managedDependency: managedDependencies) {
-                    if (managedDependency.getGroup().equals(exclusionGroupId)
-                            && managedDependency.getArtifact().equals(exclusionArtifactId)) {
+                    if (managedDependency.getGroupId().equals(exclusionGroupId)
+                            && managedDependency.getArtifactId().equals(exclusionArtifactId)) {
                         // either delete the exclusion or exclusions node if nothing left
                         if (--counter == 0) {
                             pomManipulator.deleteNode(exclusionsNode, true);
@@ -380,9 +392,14 @@ public class DependencyAngel {
         while (dependencyProcessState.hasNext()) {
             DependencyConflict currentConflict = dependencyProcessState.next();
 
-            System.out.println("Processing conflict: " + currentConflict.getDisplayName()
-                    + " to version: " + currentConflict.getVersion()
-                    + " with scope: " + currentConflict.getScope());
+            // get all the conflicted versions
+            Set<Version> conflictedVersions = getConflictedVersions(currentConflict);
+            conflictedVersions.remove(currentConflict.getVersion());
+
+            System.out.println(String.format("Processing conflict: %s to version: %s with scope: %s;"
+                    + " other versions: (%s)", currentConflict.getDisplayName(), currentConflict.getVersion(),
+                    currentConflict.getScope(), String.join(
+                            ", ", conflictedVersions.stream().map(e -> e.toString()).collect(Collectors.toSet()))));
 
             // Determine actions to be performed
             ResolvedDependencyDetailsList workToDo = new ResolvedDependencyDetailsList();
@@ -393,14 +410,14 @@ public class DependencyAngel {
                     List<String> checkInclusions = new ArrayList<>();
                     for (DependencyConflictData data2: currentConflict.getConflictHierarchy()) {
                         if (data2.getEndDependencyInfo() != null) {
-                            checkInclusions.add(String.format("%s:%s",
-                                    data2.getEndDependencyInfo().getInitialDependency().getGroup(),
-                                    data2.getEndDependencyInfo().getInitialDependency().getArtifact()));
+                            checkInclusions.add(ArtifactHelper.getArtifactIdGroupIdString(
+                                    data2.getEndDependencyInfo().getInitialDependency().getGroupId(),
+                                    data2.getEndDependencyInfo().getInitialDependency().getArtifactId()));
                         }
                     }
                     throw new RuntimeException(String.format("Error handling %s:%s - check for dependency loop " +
                                     "from these inclusions [%s]",
-                            data.getGroup(), data.getArtifact(),
+                            data.getGroupId(), data.getArtifactId(),
                             String.join(",", checkInclusions)));
                 }
                 workToDo.add(data.getEndDependencyInfo());
@@ -427,6 +444,13 @@ public class DependencyAngel {
         return workList;
     }
 
+    private Set<Version> getConflictedVersions(DependencyConflict dependencyConflict) {
+        Set<Version> results = new TreeSet<>();
+        dependencyConflict.getConflictHierarchy().forEach(conflictHierarchy ->
+                        results.addAll(conflictHierarchy.getEndDependencyInfo().getAllVersions()));
+        return results;
+    }
+
     private void updatePomFile(List<ResolvedDependencyDetailsList> workList) {
         // Update pom.xml
         PomManipulator pomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()), config);
@@ -442,12 +466,6 @@ public class DependencyAngel {
                 if (PomManipulator.isKnownArtifact(workItem.getGroup(), workItem.getArtifact())) {
                     circularDependency = true;
                 }
-//                if (details.getInitialDependency().getGroup().equals(workItem.getGroup())
-//                        && details.getInitialDependency().getArtifact().equals(workItem.getArtifact())
-//                        && !details.getInitialDependency().getVersion().equals(workItem.getLatestVersion())) {
-//                    circularDependency = true;
-//                    break;
-//                }
             }
 
             boolean needsExplicitDependency = true;
@@ -462,17 +480,17 @@ public class DependencyAngel {
                         System.out.println("Updating version: " + workItem.getArtifact());
                         // update the explicit dependency with version + scope
                         pomManipulator.updateExplicitVersion(
-                                workDependency.getInitialDependency().getGroup(),
-                                workDependency.getInitialDependency().getArtifact(),
+                                workDependency.getInitialDependency().getGroupId(),
+                                workDependency.getInitialDependency().getArtifactId(),
                                 workItem.getResolvedType(), workItem.getLatestVersion(),
                                 workItem.getResolvedScope(), workItem.getResolvedClassifier(), null);
                     }
                     if (workDependency.needsExclusion(explicitVersion)) {
                         // exclude the dependency
                         System.out.println("Excluding: " + workItem.getArtifact() + " from: " +
-                                        workDependency.getInitialDependency().getArtifact());
-                        pomManipulator.addExclusion(workDependency.getInitialDependency().getGroup(),
-                                workDependency.getInitialDependency().getArtifact(),
+                                        workDependency.getInitialDependency().getArtifactId());
+                        pomManipulator.addExclusion(workDependency.getInitialDependency().getGroupId(),
+                                workDependency.getInitialDependency().getArtifactId(),
                                 workItem.getGroup(), workItem.getArtifact());
                     }
                     // else is scope satisfied here - if it was, we don't need explicit dependency
@@ -586,7 +604,7 @@ public class DependencyAngel {
                 for (String errLine: allOutput) {
                     System.err.println(errLine);
                 }
-                throw new RuntimeException(String.format("Could not find desired value in output: %s status code: %d",
+                throw new RuntimeException(String.format("Could not find desired value in output: [%s] status code: %d",
                         errorMatchForSuccess, processResult));
             }
         } catch (Exception e) {
@@ -601,10 +619,19 @@ public class DependencyAngel {
     public static void main(String[] args) {
         try {
             DependencyAngelConfig config = new DependencyAngelConfig(args);
+
+            // Setup non-semantic versioning handler
+            VersionHelper versionHelper = new VersionHelper(config.getNonSemanticVersioning());
+            Version.setVersionHelper(versionHelper);
+
+            // Do stuff!
             DependencyAngel angel = new DependencyAngel(config);
             angel.setupDependencyManagement();
             angel.process();
             angel.exclusionReduction();
+        } catch (AngelException ae) {
+            System.err.println(ae.getMessage());
+            exit(-1);
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace(System.err);

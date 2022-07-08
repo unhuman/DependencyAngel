@@ -28,8 +28,8 @@ public class DependencyConflict extends Dependency {
     }
 
     public void updateConflictInfo(Dependency newDependency) {
-        if (getGroup().equals(newDependency.getGroup())
-                && getArtifact().equals(newDependency.getArtifact())) {
+        if (getGroupId().equals(newDependency.getGroupId())
+                && getArtifactId().equals(newDependency.getArtifactId())) {
             if (newDependency.getVersion().compareTo(getVersion()) > 0) {
                 setVersion(newDependency.getVersion());
             }

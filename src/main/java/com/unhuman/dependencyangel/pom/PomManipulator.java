@@ -1,6 +1,7 @@
 package com.unhuman.dependencyangel.pom;
 
 import com.unhuman.dependencyangel.DependencyAngelConfig;
+import com.unhuman.dependencyangel.dependency.ArtifactHelper;
 import com.unhuman.dependencyangel.StorableAngelConfigData;
 import com.unhuman.dependencyangel.dependency.Dependency;
 import com.unhuman.dependencyangel.versioning.Version;
@@ -39,6 +40,8 @@ public class PomManipulator {
     public static final String VERSION_TAG = "version";
     public static final String EXCLUSIONS_TAG = "exclusions";
     public static final String EXCLUSION_TAG = "exclusion";
+    public static final String PARENT_TAG = "parent";
+
 
     private String filename;
     private Document document;
@@ -77,9 +80,20 @@ public class PomManipulator {
                 throw new RuntimeException("Could not find project node");
             }
 
+            // Get the groupId (or leverage groupId from parent)
             groupId = getSingleNodeElementText(projectNode, GROUP_ID_TAG, false);
+            if (groupId == null) {
+                // get the groupId out of the parent
+                Node parentNode = getSingleNodeElement(projectNode, PARENT_TAG, false);
+                if (parentNode != null) {
+                    groupId = getSingleNodeElementText(parentNode, GROUP_ID_TAG, false);
+                }
+            }
             artifactId = getSingleNodeElementText(projectNode, ARTIFACT_ID_TAG, true);
-            knownArtifacts.add(groupId + ":" + artifactId);
+            String groupIdArtifactId = ArtifactHelper.getArtifactIdGroupIdString(groupId, artifactId);
+            if (!knownArtifacts.contains(groupIdArtifactId)) {
+                knownArtifacts.add(groupIdArtifactId);
+            }
 
             // determine indentations
             propertiesNode = findDesiredNode(document.getElementsByTagName(PROPERTIES_TAG), projectNode, projectNode);
@@ -123,7 +137,7 @@ public class PomManipulator {
     }
 
     public static boolean isKnownArtifact(String groupId, String artifactId) {
-        String artifact = groupId + ":" + artifactId;
+        String artifact = ArtifactHelper.getArtifactIdGroupIdString(groupId, artifactId);
         return knownArtifacts.contains(artifact);
     }
 
@@ -336,7 +350,7 @@ public class PomManipulator {
      * @return
      */
     public boolean updateExplicitVersion(Dependency dependency) {
-        return updateExplicitVersion(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
+        return updateExplicitVersion(dependency.getGroupId(), dependency.getArtifactId(), dependency.getType(),
                 dependency.getVersion(), dependency.getScope(), dependency.getClassifier(),
                 dependency.getExclusions());
     }
@@ -436,7 +450,7 @@ public class PomManipulator {
     }
 
     public void addDependencyNode(Dependency dependency) {
-        addDependencyNode(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
+        addDependencyNode(dependency.getGroupId(), dependency.getArtifactId(), dependency.getType(),
                 dependency.getVersion(), dependency.getScope(), dependency.getClassifier(), dependency.getExclusions());
     }
 
@@ -446,7 +460,7 @@ public class PomManipulator {
     }
 
     public void addForcedDependencyNode(Dependency dependency) {
-        addForcedDependencyNode(dependency.getGroup(), dependency.getArtifact(), dependency.getType(),
+        addForcedDependencyNode(dependency.getGroupId(), dependency.getArtifactId(), dependency.getType(),
                 dependency.getVersion(), dependency.getScope(), dependency.getClassifier(), dependency.getExclusions());
     }
 
@@ -544,8 +558,8 @@ public class PomManipulator {
                 Node groupIdNode = findChildElement(existingExclusionNode, GROUP_ID_TAG);
                 Node artifactIdNode = findChildElement(existingExclusionNode, ARTIFACT_ID_TAG);
 
-                if (exclusion.getGroup().equals(groupIdNode.getTextContent())
-                        && exclusion.getArtifact().equals(artifactIdNode.getTextContent())) {
+                if (exclusion.getGroupId().equals(groupIdNode.getTextContent())
+                        && exclusion.getArtifactId().equals(artifactIdNode.getTextContent())) {
                     foundExclusion = true;
                     break;
                 }
@@ -561,11 +575,11 @@ public class PomManipulator {
                 String dataIndentation = exclusionIndentation + nestedIndentation;
                 newExclusionNode.appendChild(document.createTextNode(dataIndentation));
                 Node newGroupIdNode = document.createElement(GROUP_ID_TAG);
-                newGroupIdNode.setTextContent(exclusion.getGroup());
+                newGroupIdNode.setTextContent(exclusion.getGroupId());
                 newExclusionNode.appendChild(newGroupIdNode);
                 newExclusionNode.appendChild(document.createTextNode(dataIndentation));
                 Node newArtifactIdNode = document.createElement(ARTIFACT_ID_TAG);
-                newArtifactIdNode.setTextContent(exclusion.getArtifact());
+                newArtifactIdNode.setTextContent(exclusion.getArtifactId());
                 newExclusionNode.appendChild(newArtifactIdNode);
 
                 // white space before the closing exclusion tag
@@ -654,6 +668,7 @@ public class PomManipulator {
             Node node = dependencies.item(i);
 
             while (node != null) {
+                // Track where we are and delete if necessary
                 Node nextNode = node.getNextSibling();
                 if (Node.ELEMENT_NODE == node.getNodeType()) {
                     // Delete dependencies and stored versions

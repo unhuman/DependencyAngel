@@ -1,18 +1,21 @@
 package com.unhuman.dependencyangel.versioning;
 
+import java.util.Objects;
+
 public class Version implements Comparable {
     private static final int LEFT_GREATER = 1;
     private static final int RIGHT_GREATER = -1;
     private static final int EQUALS = 0;
+
+    private static VersionHelper versionHelper = null;
 
     private String version;
     private String[] versionData;
     private String suffix;
     private boolean isSemVer;
 
-    public Version(String versionInfo) {
+    public Version(String groupId, String artifactId, String versionInfo) {
         version = versionInfo;
-        isSemVer = false;
 
         // find a suffix
         String[] versionParts = versionInfo.split("-", 2);
@@ -24,6 +27,12 @@ public class Version implements Comparable {
         }
 
         versionData = versionInfo.split("\\.");
+
+        // Handle semantic versioning
+        isSemVer = false;
+        if (versionHelper == null || !versionHelper.useSemanticVersioning(groupId, artifactId)) {
+            return;
+        }
         if (versionData.length >= 3) {
             isSemVer = true;
             for (int i = 0; i < 3; i++) {
@@ -32,6 +41,10 @@ public class Version implements Comparable {
                 }
             }
         }
+    }
+
+    public static void setVersionHelper(VersionHelper useVersionHelper) {
+        versionHelper = useVersionHelper;
     }
 
     /**
@@ -143,6 +156,16 @@ public class Version implements Comparable {
         // We have to use something for this element, so...  Just string compare
         int compareResult = left.compareTo(right);
         return (compareResult == 0) ? 0 : compareResult / Math.abs(compareResult);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return (this.compareTo(obj) == 0);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(version);
     }
 
     public String toString() {

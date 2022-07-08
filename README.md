@@ -40,6 +40,7 @@ which will default to handling some common banned dependencies.
 * `-d`, `--displayExecutionOutput` Displays execution output of processing.
 * `-e`, `--env` <key:value,...> Specify environment variables.
 * `-m`, `--mode` `All` (default), `SetupOnly`, `Continue`, `ProcessOnly`, `ProcessSingleStep`, or `ExclusionReduction`
+* `-n`, `--nonSemanticVersioning` <groupId:artifactId,...> Force non-semantic (left-to-right) versioning (ex: v7.1 > v5.0.4) 
 * `-p`, `--preserveExclusions` <groupId:artifactId,...> Preserve exclusions
 * `-s`, `--skipPrompt` (default false)
 * `directory` location of project

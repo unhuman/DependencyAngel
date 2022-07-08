@@ -87,4 +87,15 @@ public class ResolvedDependencyDetails extends ArrayList<Dependency> {
         }
         return version;
     }
+
+    public List<Version> getAllVersions() {
+        List<Version> allVersions = new ArrayList<>(this.size());
+        for (Dependency data: this) {
+            if (!allVersions.contains(data.getVersion())) {
+                allVersions.add(data.getVersion());
+            }
+        }
+        return allVersions;
+    }
+
 }
