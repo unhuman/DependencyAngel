@@ -397,17 +397,39 @@ public class PomManipulator {
         addDependencyNode(groupId, artifactId, type, version, scope, classifier, exclusions, false);
     }
 
-    public void addForcedDependencyNode(Dependency dependency) {
-        addForcedDependencyNode(dependency.getGroupId(), dependency.getArtifactId(), dependency.getType(),
-                dependency.getVersion(), dependency.getScope(), dependency.getClassifier(), dependency.getExclusions());
-    }
+    public void forceVersionDependencyNode(String groupId, String artifactId, String type, Version version,
+                                           String scope, String classifier, List<Dependency> exclusions) {
+        // See if we can find a pre-existing node that has this - without a version specified
+        // If so, just update that (and wrap with DA tags).
+        List<Node> childDependencies = findChildElements(dependenciesNode, DEPENDENCY_TAG);
+        for (Node childDependency: childDependencies) {
+            String checkGroupId = getSingleNodeElementText(childDependency, GROUP_ID_TAG, true);
+            String checkArtifactId = getSingleNodeElementText(childDependency, ARTIFACT_ID_TAG, true);
+            if (checkGroupId.equals(groupId) && checkArtifactId.equals(artifactId)) {
+                String checkVersionId = getSingleNodeElementText(childDependency, VERSION_TAG, false);
+                String versionInfo = storeVersionInProperties(groupId, artifactId, version.toString(), true);
 
-    public void addForcedDependencyNode(String groupId, String artifactId, String type, Version version, String scope,
-                                        String classifier, List<Dependency> exclusions) {
+                if (checkVersionId.equals(versionInfo)) {
+                    // Prevent duplicate adds of this item
+                    return;
+                } else if (checkVersionId == null) {
+                    // Update only the version in an existing item
+                    addLastChild(childDependency, document.createComment(COMMENT_DEPENDENCY_ANGEL_START));
+                    Node versionNode = document.createElement(VERSION_TAG);
+                    versionNode.setTextContent(versionInfo);
+                    addLastChild(childDependency, versionNode);
+                    addLastChild(childDependency, document.createComment(COMMENT_DEPENDENCY_ANGEL_END));
+                    return;
+                } else {
+                    System.err.println(
+                            String.format("You may wind up with duplicate entries of %s:%s", groupId, version));
+                }
+            }
+        }
+
+        // default behavior - create a dependency node
         addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START));
-
         addDependencyNode(groupId, artifactId, type, version, scope, classifier, exclusions, true);
-
         addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END));
     }
 

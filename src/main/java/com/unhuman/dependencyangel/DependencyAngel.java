@@ -490,7 +490,7 @@ public class DependencyAngel {
             }
 
             if (needsExplicitDependency) {
-                pomManipulator.addForcedDependencyNode(workItem.getGroup(), workItem.getArtifact(),
+                pomManipulator.forceVersionDependencyNode(workItem.getGroup(), workItem.getArtifact(),
                         workItem.getResolvedType(), workItem.getLatestVersion(), workItem.getResolvedScope(),
                         workItem.getResolvedClassifier(), null);
 
