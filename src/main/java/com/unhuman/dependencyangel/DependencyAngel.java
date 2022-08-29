@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -106,6 +105,9 @@ public class DependencyAngel {
 
         // Create a manipulator for the parent pom, so we can validate it correctly
         PomManipulator parentPomManipulator = new PomManipulator(getPomFilePath(config.getDirectory()));
+
+        // Update the config stored on disk - to be picked up later, perhaps
+        config.writeConfig(config.getDirectory());
 
         parentPomManipulator.ensureDependencyManagement();
 
@@ -366,7 +368,7 @@ public class DependencyAngel {
         String pomFilePath = getPomFilePath(directoryOrPomFilePath);
         PomManipulator pomManipulator = new PomManipulator(pomFilePath);
         pomManipulator.stripExclusions(config);
-        pomManipulator.stripDependencyAngelDependencies();
+        pomManipulator.stripDependencyAngelDependencies(config);
         pomManipulator.saveFile(null, "pom cleaned");
     }
 
@@ -385,13 +387,33 @@ public class DependencyAngel {
             DependencyConflict currentConflict = dependencyProcessState.next();
 
             // get all the conflicted versions
-            Set<Version> conflictedVersions = getConflictedVersions(currentConflict);
+            Set<Version> conflictedVersions = currentConflict.getConflictedVersions();
             conflictedVersions.remove(currentConflict.getVersion());
 
+            // Handle forced version override
+            String forcedVersionString =
+                    config.getTrackedVersion(currentConflict.getGroupId(), currentConflict.getArtifactId());
+            String forcedVersionInfo = "";
+            Version useVersion = currentConflict.getVersion();
+            if (forcedVersionString != null) {
+                Version previouslyForcedVersion =
+                        new Version(currentConflict.getGroupId(), currentConflict.getArtifactId(), forcedVersionString);
+                int comparison = currentConflict.getVersion().compareTo(previouslyForcedVersion);
+                if (comparison < 0) {
+                    forcedVersionInfo = String.format(", calculated version %s", currentConflict.getVersion());
+                    // this is a little dirty, but it's our data
+                    useVersion = previouslyForcedVersion;
+                }
+                if (comparison > 0) {
+                    forcedVersionInfo = String.format(", ignoring forced version %s", previouslyForcedVersion);
+                }
+            }
+
             System.out.println(String.format("Processing conflict: %s to version: %s with scope: %s;"
-                    + " other versions: (%s)", currentConflict.getDisplayName(), currentConflict.getVersion(),
+                    + " other versions: (%s)%s", currentConflict.getDisplayName(), useVersion,
                     currentConflict.getScope(), String.join(
-                            ", ", conflictedVersions.stream().map(e -> e.toString()).collect(Collectors.toSet()))));
+                            ", ", conflictedVersions.stream().map(e -> e.toString()).collect(Collectors.toSet())),
+                    forcedVersionInfo));
 
             // Determine actions to be performed
             ResolvedDependencyDetailsList workToDo = new ResolvedDependencyDetailsList();
@@ -414,6 +436,12 @@ public class DependencyAngel {
                 }
                 workToDo.add(data.getEndDependencyInfo());
             }
+
+            // This dirty bit ensures we use the correct version
+            if (useVersion != currentConflict.getVersion()) {
+                workToDo.setForcedLatestVersion(useVersion);
+            }
+
             workList.add(workToDo);
 
             // don't process further if the next dependency includes anything changed by this one
@@ -434,13 +462,6 @@ public class DependencyAngel {
             }
         }
         return workList;
-    }
-
-    private Set<Version> getConflictedVersions(DependencyConflict dependencyConflict) {
-        Set<Version> results = new TreeSet<>();
-        dependencyConflict.getConflictHierarchy().forEach(conflictHierarchy ->
-                        results.addAll(conflictHierarchy.getEndDependencyInfo().getAllVersions()));
-        return results;
     }
 
     private void updatePomFile(List<ResolvedDependencyDetailsList> workList) {

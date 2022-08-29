@@ -7,7 +7,9 @@ import net.sourceforge.argparse4j.inf.Namespace;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class StorableAngelConfigData {
@@ -16,17 +18,20 @@ public class StorableAngelConfigData {
     private Set<String> bannedDependencies;
     private Set<String> preserveExclusions;
     private Set<String> nonSemanticVersioning;
+    private Map<String, String> trackedVersions;
 
     protected StorableAngelConfigData() {
         this.bannedDependencies = Collections.emptySet();
         this.preserveExclusions = Collections.emptySet();
         this.nonSemanticVersioning = Collections.emptySet();
+        this.trackedVersions = new HashMap<>();
     }
 
     private StorableAngelConfigData(StorableAngelConfigData copy) {
         this.bannedDependencies = copy.bannedDependencies;
         this.preserveExclusions = copy.preserveExclusions;
         this.nonSemanticVersioning = copy.nonSemanticVersioning;
+        this.trackedVersions = copy.trackedVersions;
     }
 
     protected void setup(Namespace ns, String projectDirectory) {
@@ -39,6 +44,7 @@ public class StorableAngelConfigData {
             bannedDependencies.addAll(fileConfig.getBannedDependencies());
             preserveExclusions.addAll(fileConfig.getPreserveExclusions());
             nonSemanticVersioning.addAll(fileConfig.getNonSemanticVersioning());
+            trackedVersions.putAll(fileConfig.getTrackedVersions());
         }
 
         // TODO: Only update if there's a change
@@ -53,8 +59,25 @@ public class StorableAngelConfigData {
         return Collections.unmodifiableSet(preserveExclusions);
     }
 
+    public Map<String, String> getTrackedVersions() {
+        return Collections.unmodifiableMap(trackedVersions);
+    }
+
+    public void setTrackedVersions(Map<String, String> trackedVersions) {
+        this.trackedVersions = trackedVersions;
+    }
+
     public Set<String> getNonSemanticVersioning() {
         return Collections.unmodifiableSet(nonSemanticVersioning);
+    }
+
+    public void trackVersion(String versionName, String version) {
+        trackedVersions.put(versionName, version);
+    }
+
+    public String getTrackedVersion(String groupId, String artifactId) {
+        String key = String.format("%s-%s.version", groupId, artifactId);
+        return trackedVersions.get(key);
     }
 
     private Set<String> getDependenciesSet(Namespace ns, String itemExtract) {

@@ -1,6 +1,7 @@
 package com.unhuman.dependencyangel.pom;
 
 import com.unhuman.dependencyangel.DependencyAngelConfig;
+import com.unhuman.dependencyangel.StorableAngelConfigData;
 import com.unhuman.dependencyangel.dependency.ArtifactHelper;
 import com.unhuman.dependencyangel.dependency.Dependency;
 import com.unhuman.dependencyangel.versioning.Version;
@@ -584,12 +585,12 @@ public class PomManipulator {
         }
     }
 
-    public void stripDependencyAngelDependencies() {
-        stripDependencyAngelDependencies(propertiesNode);
-        stripDependencyAngelDependencies(dependenciesNode);
+    public void stripDependencyAngelDependencies(StorableAngelConfigData config) {
+        stripDependencyAngelDependencies(config, propertiesNode);
+        stripDependencyAngelDependencies(config, dependenciesNode);
     }
 
-    protected void stripDependencyAngelDependencies(Node parentNode) {
+    protected void stripDependencyAngelDependencies(StorableAngelConfigData config, Node parentNode) {
         // ensure we have something to do
         if (parentNode == null) {
             return;
@@ -619,6 +620,15 @@ public class PomManipulator {
                         // we have to delete this here, because we're going to turn deleting off
                         deleteNode(node, true);
                         deleting = false;
+                    }
+                } else if (deleting && Node.ELEMENT_NODE == node.getNodeType() // track deleting versions
+                        && node.getNodeName().endsWith(".version")) {
+                    Node checkVersionNode = node.getFirstChild();
+                    if (Node.TEXT_NODE == checkVersionNode.getNodeType()) {
+                        String version = checkVersionNode.getTextContent().trim();
+                        if (!version.isBlank()) {
+                            config.trackVersion(node.getNodeName(), version);
+                        }
                     }
                 }
 

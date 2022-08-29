@@ -5,6 +5,8 @@ import com.unhuman.dependencyangel.versioning.Version;
 import java.util.ArrayList;
 
 public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyDetails> {
+    private Version forcedLatestVersion = null;
+
     /**
      * Adds an item if not a conflict.  If item is not added, we know this is a duplicate inclusion
      * which should be transitive exclusion and an explicit (or some other existing) dependency
@@ -35,11 +37,19 @@ public class ResolvedDependencyDetailsList extends ArrayList<ResolvedDependencyD
         return super.add(resolvedDependencyDetails);
     }
 
+    public void setForcedLatestVersion(Version version) {
+        forcedLatestVersion = version;
+    }
+
     /**
      * gets the latest version that is used across all the dependencies
      * @return
      */
     public Version getLatestVersion() {
+        if (forcedLatestVersion != null) {
+            return forcedLatestVersion;
+        }
+
         Version latestVersion = null;
         for (ResolvedDependencyDetails resolvedDependencyDetails : this) {
             Version dependencyLatestVersion = resolvedDependencyDetails.getLatestVersion();
