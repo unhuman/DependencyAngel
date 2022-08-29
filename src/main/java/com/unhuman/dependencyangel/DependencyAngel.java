@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -248,6 +249,7 @@ public class DependencyAngel {
         // this processing may take multiple iterations if there are nested dependencies
         List<DependencyConflict> conflicts;
         int iteration = 0;
+        AtomicReference<String> loopDetector = new AtomicReference<>();
         while (true) {
             List<String> analyzeResults;
             try {
@@ -269,7 +271,7 @@ public class DependencyAngel {
                 break;
             }
 
-            List<ResolvedDependencyDetailsList> workList = calculatePomChanges(conflicts);
+            List<ResolvedDependencyDetailsList> workList = calculatePomChanges(conflicts, loopDetector);
             updatePomFile(workList);
 
             if (config.performProcessSingleStep()) {
@@ -378,11 +380,15 @@ public class DependencyAngel {
      * @param conflicts - usage is destructive and will be altered
      * @return
      */
-    private List<ResolvedDependencyDetailsList> calculatePomChanges(List<DependencyConflict> conflicts) {
+    private List<ResolvedDependencyDetailsList> calculatePomChanges(List<DependencyConflict> conflicts,
+                                                                    AtomicReference<String> loopDetector) {
         // shallow copy the conflict locally so we can mutate the list
         DependencyProcessState dependencyProcessState = new DependencyProcessState(conflicts);
 
         List<ResolvedDependencyDetailsList> workList = new ArrayList<>();
+
+        String workProcessedCalculation = "";
+
         while (dependencyProcessState.hasNext()) {
             DependencyConflict currentConflict = dependencyProcessState.next();
 
@@ -409,11 +415,19 @@ public class DependencyAngel {
                 }
             }
 
-            System.out.println(String.format("Processing conflict: %s to version: %s with scope: %s;"
+            String processingMessage = String.format("Processing conflict: %s to version: %s with scope: %s;"
                     + " other versions: (%s)%s", currentConflict.getDisplayName(), useVersion,
                     currentConflict.getScope(), String.join(
                             ", ", conflictedVersions.stream().map(e -> e.toString()).collect(Collectors.toSet())),
-                    forcedVersionInfo));
+                    forcedVersionInfo);
+
+            System.out.println(processingMessage);
+
+            // Detect a loop - and fail processing
+            workProcessedCalculation += processingMessage.hashCode();
+            if (workProcessedCalculation.equals(loopDetector.get())) {
+                throw new AngelException("Loop detected - stopping processing", null, null);
+            }
 
             // Determine actions to be performed
             ResolvedDependencyDetailsList workToDo = new ResolvedDependencyDetailsList();
@@ -461,6 +475,9 @@ public class DependencyAngel {
                 break;
             }
         }
+
+        loopDetector.set(workProcessedCalculation);
+
         return workList;
     }
 
