@@ -409,16 +409,16 @@ public class PomManipulator {
                 String checkVersionId = getSingleNodeElementText(childDependency, VERSION_TAG, false);
                 String versionInfo = storeVersionInProperties(groupId, artifactId, version.toString(), true);
 
-                if (checkVersionId.equals(versionInfo)) {
-                    // Prevent duplicate adds of this item
-                    return;
-                } else if (checkVersionId == null) {
+                if (checkVersionId == null) {
                     // Update only the version in an existing item
                     addLastChild(childDependency, document.createComment(COMMENT_DEPENDENCY_ANGEL_START));
                     Node versionNode = document.createElement(VERSION_TAG);
                     versionNode.setTextContent(versionInfo);
                     addLastChild(childDependency, versionNode);
                     addLastChild(childDependency, document.createComment(COMMENT_DEPENDENCY_ANGEL_END));
+                    return;
+                } else if (checkVersionId.equals(versionInfo)) {
+                    // Prevent duplicate adds of this item
                     return;
                 } else {
                     System.err.println(
