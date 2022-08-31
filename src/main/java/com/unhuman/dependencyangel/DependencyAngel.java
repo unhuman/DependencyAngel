@@ -426,7 +426,8 @@ public class DependencyAngel {
             // Detect a loop - and fail processing
             workProcessedCalculation += processingMessage.hashCode();
             if (workProcessedCalculation.equals(loopDetector.get())) {
-                throw new AngelException("Loop detected - stopping processing", null, null);
+                throw new AngelException("Loop detected - stopping processing.",
+                        "Fix the loop and then use Continue or a Process mode.", null);
             }
 
             // Determine actions to be performed
