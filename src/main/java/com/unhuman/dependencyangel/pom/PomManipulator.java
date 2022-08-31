@@ -5,6 +5,7 @@ import com.unhuman.dependencyangel.StorableAngelConfigData;
 import com.unhuman.dependencyangel.dependency.ArtifactHelper;
 import com.unhuman.dependencyangel.dependency.Dependency;
 import com.unhuman.dependencyangel.versioning.Version;
+import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -35,6 +36,7 @@ public class PomManipulator {
     private static final Pattern WHITESPACE_SINGLE_NEWLINE_PATTERN = Pattern.compile("(?:\\r?\\n)*(\\r?\\n\\s+)");
     public static final Pattern PROPERTIES_VARIABLE = Pattern.compile("\\$\\{(.*)\\}");
     private static final String ANGEL_TRACKING_ATTRIBUTE = "angel:tracking";
+    private static final String ANGEL_TRACKING_VALUE = "managed";
     private static final String COMMENT_DEPENDENCY_ANGEL_START = "DependencyAngel Start";
     private static final String COMMENT_DEPENDENCY_ANGEL_END = "DependencyAngel End";
     public static final String PROPERTIES_TAG = "properties";
@@ -50,7 +52,6 @@ public class PomManipulator {
     public static final String EXCLUSIONS_TAG = "exclusions";
     public static final String EXCLUSION_TAG = "exclusion";
     public static final String PARENT_TAG = "parent";
-
 
     private String filename;
     private Document document;
@@ -421,7 +422,7 @@ public class PomManipulator {
                     // Update only the version in an existing item
                     Node versionNode = document.createElement(VERSION_TAG);
                     // add an attribute for angel tracking
-                    versionNode.getAttributes().setNamedItem(document.createAttribute(ANGEL_TRACKING_ATTRIBUTE));
+                    addDependencyAngelTrackingAnnotation(true, versionNode);
                     versionNode.setTextContent(versionInfo);
                     addLastChild(childDependency, versionNode);
                     return;
@@ -444,16 +445,12 @@ public class PomManipulator {
                                    boolean needAngelTracking) {
         Node newDependency = createDependencyNode(groupId, artifactId, type, version, scope, classifier,
                 exclusions, needAngelTracking);
-        if (needAngelTracking) {
-            // add an attribute for angel tracking
-            newDependency.getAttributes().setNamedItem(document.createAttribute(ANGEL_TRACKING_ATTRIBUTE));
-        }
         addLastChild(dependenciesNode, newDependency);
     }
 
     private Node createDependencyNode(String groupId, String artifactId, String type, Version version,
                                       String scope, String classifier, List<Dependency> exclusions,
-                                      boolean needAngelComment) {
+                                      boolean needAngelTracking) {
         setDirty();
 
         Node newDependency = document.createElement(DEPENDENCY_TAG);
@@ -474,7 +471,7 @@ public class PomManipulator {
 
         if (version != null) {
             Node versionNode = document.createElement(VERSION_TAG);
-            String versionInfo = storeVersionInProperties(groupId, artifactId, version.toString(), needAngelComment);
+            String versionInfo = storeVersionInProperties(groupId, artifactId, version.toString(), needAngelTracking);
             versionNode.setTextContent(versionInfo);
             newDependency.appendChild(versionNode);
         }
@@ -493,6 +490,10 @@ public class PomManipulator {
 
         // Add exclusions
         ensureExclusions(newDependency, exclusions);
+
+        // add an attribute for angel tracking (if necessary)
+        addDependencyAngelTrackingAnnotation(needAngelTracking, newDependency);
+
         return newDependency;
     }
 
@@ -687,7 +688,7 @@ public class PomManipulator {
      * @param version
      */
     protected String storeVersionInProperties(String groupId, String artifactId, String version,
-                                              boolean needAngelComment) {
+                                              boolean needAngelTracking) {
         if (propertiesNode == null) {
             return version;
         }
@@ -708,13 +709,20 @@ public class PomManipulator {
         } else {
             Node versionProperty = document.createElement(key);
             versionProperty.setTextContent(version);
-            if (needAngelComment) {
-                // add an attribute for angel tracking
-                versionProperty.getAttributes().setNamedItem(document.createAttribute(ANGEL_TRACKING_ATTRIBUTE));
-            }
+            // add an attribute for angel tracking (if necessary)
+            addDependencyAngelTrackingAnnotation(needAngelTracking, versionProperty);
             addLastChild(propertiesNode, versionProperty);
         }
         return String.format("${%s}", key);
+    }
+
+    private void addDependencyAngelTrackingAnnotation(boolean isNeeded, Node node) {
+        if (isNeeded) {
+            // add an attribute for angel tracking
+            Attr attribute = document.createAttribute(ANGEL_TRACKING_ATTRIBUTE);
+            attribute.setTextContent(ANGEL_TRACKING_VALUE);
+            node.getAttributes().setNamedItem(attribute);
+        }
     }
 
     /**
