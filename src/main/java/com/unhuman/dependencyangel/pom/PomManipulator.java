@@ -6,6 +6,7 @@ import com.unhuman.dependencyangel.dependency.ArtifactHelper;
 import com.unhuman.dependencyangel.dependency.Dependency;
 import com.unhuman.dependencyangel.versioning.Version;
 import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -33,6 +34,7 @@ public class PomManipulator {
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\r?\\n\\s+");
     private static final Pattern WHITESPACE_SINGLE_NEWLINE_PATTERN = Pattern.compile("(?:\\r?\\n)*(\\r?\\n\\s+)");
     public static final Pattern PROPERTIES_VARIABLE = Pattern.compile("\\$\\{(.*)\\}");
+    private static final String ANGEL_TRACKING_ATTRIBUTE = "angel:tracking";
     private static final String COMMENT_DEPENDENCY_ANGEL_START = "DependencyAngel Start";
     private static final String COMMENT_DEPENDENCY_ANGEL_END = "DependencyAngel End";
     public static final String PROPERTIES_TAG = "properties";
@@ -71,6 +73,11 @@ public class PomManipulator {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
             document = builder.parse(new File(filename));
+
+            // Ensure we have a namespace for our attributes we use to track explicit angel content
+            document.getDocumentElement().setAttributeNS("http://www.w3.org/2000/xmlns/",
+                    "xmlns:angel", "http://unhuman.com/angel");
+
             document.getDocumentElement().normalize();
 
             Node projectNode = document.getFirstChild();
@@ -412,11 +419,11 @@ public class PomManipulator {
 
                 if (checkVersionId == null) {
                     // Update only the version in an existing item
-                    addLastChild(childDependency, document.createComment(COMMENT_DEPENDENCY_ANGEL_START));
                     Node versionNode = document.createElement(VERSION_TAG);
+                    // add an attribute for angel tracking
+                    versionNode.getAttributes().setNamedItem(document.createAttribute(ANGEL_TRACKING_ATTRIBUTE));
                     versionNode.setTextContent(versionInfo);
                     addLastChild(childDependency, versionNode);
-                    addLastChild(childDependency, document.createComment(COMMENT_DEPENDENCY_ANGEL_END));
                     return;
                 } else if (checkVersionId.equals(versionInfo)) {
                     // Prevent duplicate adds of this item
@@ -429,16 +436,18 @@ public class PomManipulator {
         }
 
         // default behavior - create a dependency node
-        addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START));
         addDependencyNode(groupId, artifactId, type, version, scope, classifier, exclusions, true);
-        addLastChild(dependenciesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END));
     }
 
     private void addDependencyNode(String groupId, String artifactId, String type, Version version,
                                    String scope, String classifier, List<Dependency> exclusions,
-                                   boolean needAngelComment) {
+                                   boolean needAngelTracking) {
         Node newDependency = createDependencyNode(groupId, artifactId, type, version, scope, classifier,
-                exclusions, needAngelComment);
+                exclusions, needAngelTracking);
+        if (needAngelTracking) {
+            // add an attribute for angel tracking
+            newDependency.getAttributes().setNamedItem(document.createAttribute(ANGEL_TRACKING_ATTRIBUTE));
+        }
         addLastChild(dependenciesNode, newDependency);
     }
 
@@ -606,6 +615,15 @@ public class PomManipulator {
                 // Track where we are and delete if necessary
                 Node nextNode = node.getNextSibling();
 
+                // if we find our attribute, we can just delete this node
+                NamedNodeMap attributes = node.getAttributes();
+                if (attributes != null && attributes.getNamedItem(ANGEL_TRACKING_ATTRIBUTE) != null) {
+                    deleteNode(node, true);
+                    node = nextNode;
+                    continue;
+                }
+
+                // legacy handling cleans up all data within comments
                 if (Node.COMMENT_NODE == node.getNodeType()) {
                     if (COMMENT_DEPENDENCY_ANGEL_START.equals(node.getTextContent().trim())) {
                         if (deleting) {
@@ -691,12 +709,10 @@ public class PomManipulator {
             Node versionProperty = document.createElement(key);
             versionProperty.setTextContent(version);
             if (needAngelComment) {
-                addLastChild(propertiesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_START));
+                // add an attribute for angel tracking
+                versionProperty.getAttributes().setNamedItem(document.createAttribute(ANGEL_TRACKING_ATTRIBUTE));
             }
             addLastChild(propertiesNode, versionProperty);
-            if (needAngelComment) {
-                addLastChild(propertiesNode, document.createComment(COMMENT_DEPENDENCY_ANGEL_END));
-            }
         }
         return String.format("${%s}", key);
     }
