@@ -36,7 +36,8 @@ public class PomManipulator {
     private static final Pattern WHITESPACE_SINGLE_NEWLINE_PATTERN = Pattern.compile("(?:\\r?\\n)*(\\r?\\n\\s+)");
     public static final Pattern PROPERTIES_VARIABLE = Pattern.compile("\\$\\{(.*)\\}");
     private static final String ANGEL_TRACKING_ATTRIBUTE = "angel:tracking";
-    private static final String ANGEL_TRACKING_VALUE = "managed";
+    private static final String ANGEL_MANAGED_VALUE = "managed";
+    public static final String ANGEL_PRESERVE_VALUE = "preserve";
     private static final String COMMENT_DEPENDENCY_ANGEL_START = "DependencyAngel Start";
     private static final String COMMENT_DEPENDENCY_ANGEL_END = "DependencyAngel End";
     public static final String PROPERTIES_TAG = "properties";
@@ -617,8 +618,7 @@ public class PomManipulator {
                 Node nextNode = node.getNextSibling();
 
                 // if we find our attribute, we can just delete this node
-                NamedNodeMap attributes = node.getAttributes();
-                if (attributes != null && attributes.getNamedItem(ANGEL_TRACKING_ATTRIBUTE) != null) {
+                if (nodeHasAngelAttributeValue(node, ANGEL_MANAGED_VALUE)) {
                     deleteNode(node, true);
                     node = nextNode;
                     continue;
@@ -661,6 +661,16 @@ public class PomManipulator {
         if (deleting) {
             throw new RuntimeException("Missing Forced Dependency End comment tag");
         }
+    }
+
+    public static boolean nodeHasAngelAttributeValue(Node node, String desiredValue) {
+        // if we find our attribute, we can just delete this node
+        NamedNodeMap attributes = node.getAttributes();
+        if (attributes != null && attributes.getNamedItem(ANGEL_TRACKING_ATTRIBUTE) != null) {
+            return (attributes.getNamedItem(ANGEL_TRACKING_ATTRIBUTE).getTextContent()
+                    .equals(desiredValue));
+        }
+        return false;
     }
 
     public void deleteNode(Node deleteNode, boolean cleanPriorWhitespace) {
@@ -720,7 +730,7 @@ public class PomManipulator {
         if (isNeeded) {
             // add an attribute for angel tracking
             Attr attribute = document.createAttribute(ANGEL_TRACKING_ATTRIBUTE);
-            attribute.setTextContent(ANGEL_TRACKING_VALUE);
+            attribute.setTextContent(ANGEL_MANAGED_VALUE);
             node.getAttributes().setNamedItem(attribute);
         }
     }
