@@ -54,6 +54,7 @@ which will default to handling some common banned dependencies.
 * `ExclusionReduction`: Remove unnecessary exclusions in dependencyManagement. 
 
 ## Workflow
+You should build your project before running Dependency Angel.
 Dependency Angel performs the following process:
 1. Performs a setup step which cleans out any existing exclusions.  This is to ensure that all dependencies are re-evaluated and latest versions are chosen.
 2. Performs a process step that runs `mvn dependency:analyze` and evaluates dependencies and determines if there are conflicts.  These conflicts are processed, assuming the latest version is always desired.
@@ -68,6 +69,7 @@ Dependency Angel performs the following process:
 * If you have challenges, it may be useful to run Dependency Angel in order, manually, to identify where changes could occur.  This is done by running `-m SetupOnly`, then `-m ProcessOnly` or `-m ProcessSingleStep`.
 * If Dependency Angel adds an explicit dependency that has banned transitive dependency, you will have to manually add that exclusion.
 * If your application fails at runtime, it could likely be because of a lost transitive dependency (or version issues).  Compare the `mvn dependency:tree` between prior work and Dependency Angel to help identify gaps.
+* If the wrong version is chosen, try doing a build of your project before running Dependency Angel.
 * If you get a problem finding a version of a dependency from the repository, try doing a build of your project before running Dependency Angel.
 
 ## Money
